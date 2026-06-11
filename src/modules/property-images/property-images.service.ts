@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -30,8 +31,15 @@ export class PropertyImagesService {
 
     await this.checkPropertyOwnership(propertyId, userId, userRole);
 
+    const MAX_IMAGES = 10;
     const existing = await this.imageRepo.countBy({ propertyId });
-    const images = files.map((file, index) =>
+
+    if (existing >= MAX_IMAGES) {
+      throw new BadRequestException(`Ce bien a déjà atteint le maximum de ${MAX_IMAGES} photos.`);
+    }
+
+    const allowed = files.slice(0, MAX_IMAGES - existing);
+    const images = allowed.map((file, index) =>
       this.imageRepo.create({
         propertyId,
         url: `/uploads/properties/${file.filename}`,
