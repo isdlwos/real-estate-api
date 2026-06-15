@@ -58,6 +58,9 @@ export class RentalLease {
   @Column({ default: true })
   autoRenew: boolean;
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 5.0 })
+  commissionRate: number;
+
   @Column({ nullable: true, type: 'text' })
   entryNotes: string | null;
 

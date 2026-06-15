@@ -130,9 +130,11 @@ export class RentalLeasesService {
     if (payment.status === PaymentStatus.PAID) {
       payment.status = PaymentStatus.PENDING;
       payment.paidAt = null;
+      payment.commissionAmount = null;
     } else {
       payment.status = PaymentStatus.PAID;
       payment.paidAt = new Date();
+      payment.commissionAmount = Math.round(Number(payment.amount) * Number(lease.commissionRate)) / 100;
     }
     return this.paymentRepo.save(payment);
   }

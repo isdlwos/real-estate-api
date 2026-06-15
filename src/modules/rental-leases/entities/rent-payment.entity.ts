@@ -37,6 +37,12 @@ export class RentPayment {
   @Column({ nullable: true, type: 'text' })
   notes: string | null;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  commissionAmount: number | null;
+
+  @Column({ nullable: true, type: 'uuid' })
+  commissionInvoiceId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

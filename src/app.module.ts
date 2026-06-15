@@ -23,6 +23,7 @@ import { PropertyToursModule } from './modules/property-tours/property-tours.mod
 import { DiasporaTransactionsModule } from './modules/diaspora-transactions/diaspora-transactions.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { RentalLeasesModule } from './modules/rental-leases/rental-leases.module';
+import { CommissionInvoicesModule } from './modules/commission-invoices/commission-invoices.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { RentalLeasesModule } from './modules/rental-leases/rental-leases.module
     DiasporaTransactionsModule,
     SubscriptionsModule,
     RentalLeasesModule,
+    CommissionInvoicesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
