@@ -24,6 +24,9 @@ export class Agent {
   @Column({ nullable: true })
   agency: string;
 
+  @Column({ default: false })
+  isDiasporaSpecialist: boolean;
+
   @Column()
   userId: string;
 

@@ -15,6 +15,9 @@ export class PropertyImage {
   @Column()
   url: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  publicId: string | null;
+
   @Column({ default: false })
   isPrimary: boolean;
 

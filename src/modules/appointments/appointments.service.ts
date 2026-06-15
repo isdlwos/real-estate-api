@@ -9,7 +9,9 @@ import { Between, Repository } from 'typeorm';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { Role } from '../../common/enums/role.enum';
 import { PaginatedResponse } from '../../common/pagination/paginated.response';
+import { MailService } from '../mail/mail.service';
 import { Agent } from '../users/entities/agent.entity';
+import { User } from '../users/entities/user.entity';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { RescheduleAppointmentDto } from './dto/reschedule-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
@@ -20,13 +22,17 @@ export class AppointmentsService {
   constructor(
     @InjectRepository(Appointment) private appointmentRepo: Repository<Appointment>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
+    @InjectRepository(User) private userRepo: Repository<User>,
+    private mailService: MailService,
   ) {}
 
   async create(dto: CreateAppointmentDto, clientId: string): Promise<Appointment> {
     await this.checkDoubleBooking(dto.agentId, dto.date);
 
     const appointment = this.appointmentRepo.create({ ...dto, clientId });
-    return this.appointmentRepo.save(appointment);
+    const saved = await this.appointmentRepo.save(appointment);
+    this.notifyAgentNewAppointment(saved, clientId).catch(() => {});
+    return saved;
   }
 
   async findAll(userId: string, userRole: Role, page = 1, limit = 20): Promise<PaginatedResponse<Appointment>> {
@@ -91,7 +97,11 @@ export class AppointmentsService {
     }
 
     appointment.status = dto.status;
-    return this.appointmentRepo.save(appointment);
+    const saved = await this.appointmentRepo.save(appointment);
+    if (dto.status === AppointmentStatus.CONFIRMED) {
+      this.notifyClientConfirmation(saved).catch(() => {});
+    }
+    return saved;
   }
 
   async reschedule(
@@ -132,6 +142,34 @@ export class AppointmentsService {
     }
 
     await this.appointmentRepo.remove(appointment);
+  }
+
+  private async notifyAgentNewAppointment(appointment: Appointment, clientId: string): Promise<void> {
+    const [agent, client] = await Promise.all([
+      this.agentRepo.findOne({ where: { id: appointment.agentId }, relations: { user: true } }),
+      this.userRepo.findOneBy({ id: clientId }),
+    ]);
+    if (!agent?.user?.email) return;
+    await this.mailService.sendNewAppointment({
+      to: agent.user.email,
+      agentFirstName: agent.user.firstName,
+      clientName: client ? `${client.firstName} ${client.lastName}` : 'Un client',
+      date: appointment.date,
+    });
+  }
+
+  private async notifyClientConfirmation(appointment: Appointment): Promise<void> {
+    const [client, agent] = await Promise.all([
+      this.userRepo.findOneBy({ id: appointment.clientId }),
+      this.agentRepo.findOne({ where: { id: appointment.agentId }, relations: { user: true } }),
+    ]);
+    if (!client?.email) return;
+    await this.mailService.sendAppointmentConfirmed({
+      to: client.email,
+      clientFirstName: client.firstName,
+      agentName: agent?.user ? `${agent.user.firstName} ${agent.user.lastName}` : 'Votre agent',
+      date: appointment.date,
+    });
   }
 
   private async checkDoubleBooking(agentId: string, date: Date): Promise<void> {

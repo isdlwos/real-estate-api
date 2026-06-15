@@ -7,6 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../../common/enums/role.enum';
 import { PropertyStatus } from '../../common/enums/property-status.enum';
+import { SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { PaginatedResponse } from '../../common/pagination/paginated.response';
 import { Agent } from '../users/entities/agent.entity';
 import { CreatePropertyDto } from './dto/create-property.dto';
@@ -19,7 +21,48 @@ export class PropertiesService {
   constructor(
     @InjectRepository(Property) private propertyRepo: Repository<Property>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
+    @InjectRepository(Subscription) private subscriptionRepo: Repository<Subscription>,
   ) {}
+
+  async getQuotaInfo(userId: string): Promise<{ used: number; limit: number; planName: string; canPublish: boolean; canBoost: boolean; canFeature: boolean }> {
+    const subscription = await this.subscriptionRepo.findOne({
+      where: { agentId: userId, status: SubscriptionStatus.ACTIVE },
+      relations: { plan: true },
+    });
+
+    if (!subscription) {
+      return { used: 0, limit: 0, planName: 'Aucun', canPublish: false, canBoost: false, canFeature: false };
+    }
+
+    const agent = await this.agentRepo.findOneBy({ userId });
+    const used = agent
+      ? await this.propertyRepo.countBy({ agentId: agent.id, status: PropertyStatus.AVAILABLE })
+      : 0;
+
+    const limit = subscription.plan.maxListings;
+    return {
+      used,
+      limit,
+      planName: subscription.plan.name,
+      canPublish: limit === -1 || used < limit,
+      canBoost: subscription.plan.canBoost,
+      canFeature: subscription.plan.canFeature,
+    };
+  }
+
+  private async checkPublishQuota(userId: string): Promise<void> {
+    const quota = await this.getQuotaInfo(userId);
+    if (!quota.canPublish) {
+      if (quota.limit === 0) {
+        throw new ForbiddenException(
+          'Vous devez souscrire à un abonnement pour publier des annonces.',
+        );
+      }
+      throw new ForbiddenException(
+        `Quota atteint : votre formule ${quota.planName} permet ${quota.limit} annonce${quota.limit > 1 ? 's' : ''} active${quota.limit > 1 ? 's' : ''}. Passez à une formule supérieure.`,
+      );
+    }
+  }
 
   async create(dto: CreatePropertyDto, userId: string, userRole: Role): Promise<Property> {
     let agentId: string | undefined = undefined;
@@ -57,10 +100,12 @@ export class PropertiesService {
     if (filters.maxPrice != null) qb.andWhere('property.price <= :maxPrice', { maxPrice: filters.maxPrice });
     if (filters.minRooms != null) qb.andWhere('property.rooms >= :minRooms', { minRooms: filters.minRooms });
     if (filters.minSurface != null) qb.andWhere('property.surface >= :minSurface', { minSurface: filters.minSurface });
+    if (filters.featured === true) qb.andWhere('property.featuredUntil > NOW()');
 
     const sortField = filters.sortBy || 'createdAt';
     const order = filters.order || 'DESC';
-    qb.orderBy(`property.${sortField}`, order);
+    qb.orderBy('property.boostedUntil', 'DESC', 'NULLS LAST')
+      .addOrderBy(`property.${sortField}`, order);
 
     const page = filters.page || 1;
     const limit = filters.limit || 20;
@@ -73,7 +118,7 @@ export class PropertiesService {
   async findOne(id: string): Promise<Property> {
     const property = await this.propertyRepo.findOne({
       where: { id },
-      relations: { images: true, agent: { user: true } },
+      relations: { images: true, tours: true, agent: { user: true } },
     });
     if (!property) throw new NotFoundException('Property not found');
     return property;
@@ -87,6 +132,16 @@ export class PropertiesService {
   ): Promise<Property> {
     const property = await this.findOne(id);
     await this.checkOwnership(property, userId, userRole);
+
+    // Quota check uniquement quand on publie (passage à "available")
+    if (
+      dto.status === PropertyStatus.AVAILABLE &&
+      property.status !== PropertyStatus.AVAILABLE &&
+      userRole === Role.AGENT
+    ) {
+      await this.checkPublishQuota(userId);
+    }
+
     Object.assign(property, dto);
     return this.propertyRepo.save(property);
   }
@@ -175,6 +230,84 @@ export class PropertiesService {
       .setParameter('price', property.price)
       .limit(6)
       .getMany();
+  }
+
+  async trackView(id: string): Promise<void> {
+    await this.propertyRepo
+      .createQueryBuilder()
+      .update(Property)
+      .set({ viewCount: () => '"viewCount" + 1' })
+      .where('id = :id AND status = :status', { id, status: PropertyStatus.AVAILABLE })
+      .execute();
+  }
+
+  async trackContact(id: string): Promise<void> {
+    await this.propertyRepo
+      .createQueryBuilder()
+      .update(Property)
+      .set({ contactCount: () => '"contactCount" + 1' })
+      .where('id = :id AND status = :status', { id, status: PropertyStatus.AVAILABLE })
+      .execute();
+  }
+
+  async getAgentStats(userId: string): Promise<{
+    totalViews: number;
+    totalContacts: number;
+    properties: { id: string; title: string; viewCount: number; contactCount: number }[];
+  }> {
+    const agent = await this.agentRepo.findOneBy({ userId });
+    if (!agent) return { totalViews: 0, totalContacts: 0, properties: [] };
+
+    const props = await this.propertyRepo.find({
+      where: { agentId: agent.id },
+      select: { id: true, title: true, viewCount: true, contactCount: true },
+      order: { viewCount: 'DESC' },
+    });
+
+    const totalViews    = props.reduce((sum, p) => sum + (p.viewCount    ?? 0), 0);
+    const totalContacts = props.reduce((sum, p) => sum + (p.contactCount ?? 0), 0);
+
+    return { totalViews, totalContacts, properties: props };
+  }
+
+  async boost(id: string, weeks: number, userId: string, userRole: Role): Promise<Property> {
+    const property = await this.findOne(id);
+    await this.checkOwnership(property, userId, userRole);
+
+    if (userRole !== Role.ADMIN) {
+      const subscription = await this.subscriptionRepo.findOne({
+        where: { agentId: userId, status: SubscriptionStatus.ACTIVE },
+        relations: { plan: true },
+      });
+      if (!subscription?.plan.canBoost) {
+        throw new ForbiddenException('La mise en avant "Boost" est réservée aux formules Pro et Agence.');
+      }
+    }
+
+    const until = new Date();
+    until.setDate(until.getDate() + weeks * 7);
+    property.boostedUntil = until;
+    return this.propertyRepo.save(property);
+  }
+
+  async feature(id: string, months: number, userId: string, userRole: Role): Promise<Property> {
+    const property = await this.findOne(id);
+    await this.checkOwnership(property, userId, userRole);
+
+    if (userRole !== Role.ADMIN) {
+      const subscription = await this.subscriptionRepo.findOne({
+        where: { agentId: userId, status: SubscriptionStatus.ACTIVE },
+        relations: { plan: true },
+      });
+      if (!subscription?.plan.canFeature) {
+        throw new ForbiddenException('Le "Coup de cœur" est réservé à la formule Agence.');
+      }
+    }
+
+    const until = new Date();
+    until.setMonth(until.getMonth() + months);
+    property.featuredUntil = until;
+    return this.propertyRepo.save(property);
   }
 
   private async checkOwnership(property: Property, userId: string, userRole: Role): Promise<void> {

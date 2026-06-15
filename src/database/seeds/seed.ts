@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { config } from 'dotenv';
 import { AppDataSource } from '../../config/data-source';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { Plan } from '../../modules/subscriptions/entities/plan.entity';
 import { PropertyCategory } from '../../common/enums/property-category.enum';
 import { PropertyStatus } from '../../common/enums/property-status.enum';
 import { PropertyType } from '../../common/enums/property-type.enum';
@@ -49,6 +50,23 @@ async function seed() {
   const propertyRepo = AppDataSource.getRepository(Property);
   const propertyImageRepo = AppDataSource.getRepository(PropertyImage);
   const appointmentRepo = AppDataSource.getRepository(Appointment);
+  const planRepo = AppDataSource.getRepository(Plan);
+
+  // Plans d'abonnement
+  const plans = [
+    { name: 'Starter', slug: 'starter', price: 15000, maxListings: 5,  canBoost: false, canFeature: false },
+    { name: 'Pro',     slug: 'pro',     price: 35000, maxListings: 20, canBoost: true,  canFeature: false },
+    { name: 'Agence',  slug: 'agency',  price: 75000, maxListings: -1, canBoost: true,  canFeature: true  },
+  ];
+  for (const p of plans) {
+    const exists = await planRepo.findOneBy({ slug: p.slug });
+    if (!exists) {
+      await planRepo.save(planRepo.create(p));
+    } else {
+      await planRepo.update({ slug: p.slug }, { canBoost: p.canBoost, canFeature: p.canFeature });
+    }
+  }
+  console.log('✅ Plans d\'abonnement créés/mis à jour');
 
   // Admin
   let admin = await userRepo.findOneBy({ email: 'admin@prestige-immobilier.sn' });

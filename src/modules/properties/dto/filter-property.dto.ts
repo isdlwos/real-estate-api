@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -70,4 +71,10 @@ export class FilterPropertyDto extends PaginationDto {
   @IsOptional()
   @IsEnum(['ASC', 'DESC'])
   order?: 'ASC' | 'DESC';
+
+  @ApiPropertyOptional({ description: 'Show only featured (Coup de cœur) properties' })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  featured?: boolean;
 }

@@ -12,6 +12,15 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
+import { IsBoolean, IsOptional } from 'class-validator';
+import { Transform } from 'class-transformer';
+
+class AgentsFilterDto extends PaginationDto {
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  diasporaOnly?: boolean;
+}
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
@@ -49,8 +58,8 @@ export class UsersController {
   @Get('agents')
   @Public()
   @ApiOperation({ summary: 'List all agents with their profile (public, paginated)' })
-  findAllAgents(@Query() pagination: PaginationDto) {
-    return this.usersService.findAllAgents(pagination.page, pagination.limit);
+  findAllAgents(@Query() query: AgentsFilterDto) {
+    return this.usersService.findAllAgents(query.page, query.limit, query.diasporaOnly);
   }
 
   @Get('me')
@@ -137,6 +146,13 @@ export class UsersController {
     @Body() dto: UpdateAgentDto,
   ) {
     return this.usersService.promoteToAgent(id, dto);
+  }
+
+  @Patch(':id/diaspora-specialist')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Toggle diaspora specialist flag on an agent (admin)' })
+  toggleDiasporaSpecialist(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.toggleDiasporaSpecialist(id);
   }
 
   @Get(':id/agent-profile')

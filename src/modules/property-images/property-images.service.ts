@@ -5,10 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
 import { Repository } from 'typeorm';
 import { Role } from '../../common/enums/role.enum';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Agent } from '../users/entities/agent.entity';
 import { Property } from '../properties/entities/property.entity';
 import { PropertyImage } from './entities/property-image.entity';
@@ -19,6 +18,7 @@ export class PropertyImagesService {
     @InjectRepository(PropertyImage) private imageRepo: Repository<PropertyImage>,
     @InjectRepository(Property) private propertyRepo: Repository<Property>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
+    private cloudinary: CloudinaryService,
   ) {}
 
   async uploadImages(
@@ -39,10 +39,16 @@ export class PropertyImagesService {
     }
 
     const allowed = files.slice(0, MAX_IMAGES - existing);
-    const images = allowed.map((file, index) =>
+
+    const uploaded = await Promise.all(
+      allowed.map((file) => this.cloudinary.upload(file, `prestige-immobilier/properties/${propertyId}`)),
+    );
+
+    const images = uploaded.map((result, index) =>
       this.imageRepo.create({
         propertyId,
-        url: `/uploads/properties/${file.filename}`,
+        url: result.secure_url,
+        publicId: result.public_id,
         isPrimary: existing === 0 && index === 0,
       }),
     );
@@ -67,12 +73,8 @@ export class PropertyImagesService {
 
     await this.checkPropertyOwnership(image.propertyId, userId, userRole);
 
-    const filename = image.url.split('/').pop();
-    const filePath = join(process.cwd(), 'uploads', 'properties', filename!);
-    try {
-      await unlink(filePath);
-    } catch {
-      // file may not exist on disk — continue
+    if (image.publicId) {
+      await this.cloudinary.delete(image.publicId);
     }
 
     await this.imageRepo.remove(image);

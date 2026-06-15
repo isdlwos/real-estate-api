@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -21,6 +23,7 @@ import { Role } from '../../common/enums/role.enum';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { FilterPropertyDto } from './dto/filter-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
+import { Throttle } from '@nestjs/throttler';
 import { PropertiesService } from './properties.service';
 
 @ApiTags('properties')
@@ -88,6 +91,32 @@ export class PropertiesController {
     return this.propertiesService.update(id, dto, userId, userRole);
   }
 
+  @Patch(':id/boost')
+  @Roles(Role.AGENT, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Boost a property to top of results (agent: own only, admin: any)' })
+  boost(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { weeks?: number },
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
+  ) {
+    return this.propertiesService.boost(id, body.weeks ?? 1, userId, userRole);
+  }
+
+  @Patch(':id/feature')
+  @Roles(Role.AGENT, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mark a property as featured / Coup de cœur (agent: own only, admin: any)' })
+  feature(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { months?: number },
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
+  ) {
+    return this.propertiesService.feature(id, body.months ?? 1, userId, userRole);
+  }
+
   @Delete(':id')
   @Roles(Role.AGENT, Role.ADMIN)
   @ApiBearerAuth()
@@ -98,5 +127,31 @@ export class PropertiesController {
     @CurrentUser('role') userRole: Role,
   ) {
     return this.propertiesService.remove(id, userId, userRole);
+  }
+
+  @Public()
+  @Post(':id/view')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Track a property view' })
+  trackView(@Param('id', ParseUUIDPipe) id: string) {
+    return this.propertiesService.trackView(id);
+  }
+
+  @Public()
+  @Post(':id/contact')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @ApiOperation({ summary: 'Track a contact click on a property' })
+  trackContact(@Param('id', ParseUUIDPipe) id: string) {
+    return this.propertiesService.trackContact(id);
+  }
+
+  @Roles(Role.AGENT, Role.ADMIN)
+  @Get('me/stats')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get stats for the authenticated agent' })
+  getMyStats(@CurrentUser('id') userId: string) {
+    return this.propertiesService.getAgentStats(userId);
   }
 }

@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class UpdateAgentDto {
   @ApiPropertyOptional()
@@ -16,4 +16,9 @@ export class UpdateAgentDto {
   @IsOptional()
   @IsString()
   agency?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isDiasporaSpecialist?: boolean;
 }

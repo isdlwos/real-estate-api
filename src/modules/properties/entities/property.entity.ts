@@ -13,6 +13,7 @@ import { PropertyCategory } from '../../../common/enums/property-category.enum';
 import { PropertyStatus } from '../../../common/enums/property-status.enum';
 import { Agent } from '../../users/entities/agent.entity';
 import { PropertyImage } from '../../property-images/entities/property-image.entity';
+import { PropertyTour } from '../../property-tours/entities/property-tour.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { Favorite } from '../../favorites/entities/favorite.entity';
 
@@ -72,6 +73,18 @@ export class Property {
   @Column({ type: 'jsonb', nullable: true })
   features: Record<string, unknown>;
 
+  @Column({ default: 0 })
+  viewCount: number;
+
+  @Column({ default: 0 })
+  contactCount: number;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  boostedUntil: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  featuredUntil: Date | null;
+
   @Column({ nullable: true })
   agentId: string;
 
@@ -81,6 +94,9 @@ export class Property {
 
   @OneToMany(() => PropertyImage, (img) => img.property, { cascade: true })
   images: PropertyImage[];
+
+  @OneToMany(() => PropertyTour, (tour) => tour.property, { cascade: true })
+  tours: PropertyTour[];
 
   @OneToMany(() => Appointment, (appt) => appt.property)
   appointments: Appointment[];

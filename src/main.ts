@@ -3,11 +3,17 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { validateEnv } from './config/env.validation';
 
 async function bootstrap() {
+  validateEnv();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.use(helmet());
 
   app.setGlobalPrefix('api/v1');
 
@@ -22,12 +28,14 @@ async function bootstrap() {
 
   app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads' });
 
+  const corsOrigins = process.env.CORS_ORIGINS;
   app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') || '*',
+    origin: corsOrigins ? corsOrigins.split(',') : '*',
     credentials: true,
   });
 
-  const swaggerConfig = new DocumentBuilder()
+  if (process.env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
     .setTitle('Real Estate API')
     .setDescription('API REST pour une agence immobilière — NestJS + PostgreSQL')
     .setVersion('1.0')
@@ -155,11 +163,14 @@ async function bootstrap() {
   </body>
 </html>`);
   });
+  } // end if (NODE_ENV !== 'production')
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`Application running on http://localhost:${port}/api/v1`);
-  console.log(`Swagger UI  →  http://localhost:${port}/api/docs`);
-  console.log(`ReDoc       →  http://localhost:${port}/api/redoc`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Swagger UI  →  http://localhost:${port}/api/docs`);
+    console.log(`ReDoc       →  http://localhost:${port}/api/redoc`);
+  }
 }
 bootstrap();

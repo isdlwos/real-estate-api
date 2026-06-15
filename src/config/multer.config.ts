@@ -1,15 +1,8 @@
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { randomUUID } from 'crypto';
+import { memoryStorage } from 'multer';
 import { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 
 export const multerConfig: MulterOptions = {
-  storage: diskStorage({
-    destination: process.env.UPLOAD_DEST || './uploads/properties',
-    filename: (_req, file, cb) => {
-      cb(null, `${randomUUID()}${extname(file.originalname)}`);
-    },
-  }),
+  storage: memoryStorage(),
   limits: {
     fileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10),
   },

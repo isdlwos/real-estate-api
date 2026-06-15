@@ -12,6 +12,7 @@ import { Role } from '../../common/enums/role.enum';
 import { PaginatedResponse } from '../../common/pagination/paginated.response';
 import { Property } from '../properties/entities/property.entity';
 import { PropertyStatus } from '../../common/enums/property-status.enum';
+import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateAgentDto } from './dto/update-agent.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -24,6 +25,7 @@ export class UsersService {
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
     @InjectRepository(Property) private propertyRepo: Repository<Property>,
+    @InjectRepository(Subscription) private subscriptionRepo: Repository<Subscription>,
   ) {}
 
   async create(dto: CreateUserDto): Promise<User> {
@@ -38,6 +40,7 @@ export class UsersService {
   async findAll(page = 1, limit = 20, role?: Role): Promise<PaginatedResponse<User>> {
     const [data, total] = await this.userRepo.findAndCount({
       where: role ? { role } : undefined,
+      relations: { agentProfile: true },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -150,12 +153,25 @@ export class UsersService {
     return this.agentRepo.save(agent);
   }
 
-  async getAgentProfile(userId: string): Promise<Agent> {
+  async getAgentProfile(userId: string): Promise<Agent & { activeSubscription?: { planName: string; planSlug: string } }> {
     const agent = await this.agentRepo.findOne({
       where: { userId },
       relations: { user: true },
     });
     if (!agent) throw new NotFoundException('Agent profile not found');
+
+    const subscription = await this.subscriptionRepo.findOne({
+      where: { agentId: userId, status: SubscriptionStatus.ACTIVE },
+      relations: { plan: true },
+    });
+
+    if (subscription?.plan) {
+      (agent as any).activeSubscription = {
+        planName: subscription.plan.name,
+        planSlug: subscription.plan.slug,
+      };
+    }
+
     return agent;
   }
 
@@ -187,15 +203,28 @@ export class UsersService {
     await this.userRepo.update(userId, { password: hashed, refreshTokenHash: null });
   }
 
-  async findAllAgents(page = 1, limit = 20): Promise<PaginatedResponse<Agent>> {
-    const [data, total] = await this.agentRepo
+  async findAllAgents(page = 1, limit = 20, diasporaOnly: boolean | string = false): Promise<PaginatedResponse<Agent>> {
+    // enableImplicitConversion converts 'false' → Boolean('false') = true, so compare strictly
+    const filterDiaspora = diasporaOnly === true || diasporaOnly === 'true';
+    const qb = this.agentRepo
       .createQueryBuilder('agent')
       .leftJoinAndSelect('agent.user', 'user')
-      .orderBy('user.firstName', 'ASC')
+      .orderBy('agent.isDiasporaSpecialist', 'DESC')
+      .addOrderBy('user.firstName', 'ASC')
       .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+      .take(limit);
+
+    if (filterDiaspora) qb.where('agent.isDiasporaSpecialist = true');
+
+    const [data, total] = await qb.getManyAndCount();
     return new PaginatedResponse(data, total, page, limit);
+  }
+
+  async toggleDiasporaSpecialist(userId: string): Promise<Agent> {
+    const agent = await this.agentRepo.findOneBy({ userId });
+    if (!agent) throw new NotFoundException('Agent profile not found');
+    agent.isDiasporaSpecialist = !agent.isDiasporaSpecialist;
+    return this.agentRepo.save(agent);
   }
 
   async getAgentProperties(userId: string, page = 1, limit = 20): Promise<PaginatedResponse<Property>> {
