@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, ParseUUIDPipe, Optional, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  ParseUUIDPipe,
+  Optional,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -6,6 +17,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
 import { CreateLeaseDto } from './dto/create-lease.dto';
+import { SetAutoRenewDto } from './dto/set-auto-renew.dto';
 import { RentalLeasesService } from './rental-leases.service';
 
 @ApiTags('Rental Leases')
@@ -23,7 +35,9 @@ export class RentalLeasesController {
 
   @Get()
   @Roles(Role.AGENT, Role.ADMIN)
-  @ApiOperation({ summary: 'List rental leases (admin: all with filters, agent: own only)' })
+  @ApiOperation({
+    summary: 'List rental leases (admin: all with filters, agent: own only)',
+  })
   findAll(
     @Query() query: PaginationDto,
     @Query('status') status: string | undefined,
@@ -31,7 +45,14 @@ export class RentalLeasesController {
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {
-    return this.service.findAll(userId, userRole, query.page, query.limit, status, agentId);
+    return this.service.findAll(
+      userId,
+      userRole,
+      query.page,
+      query.limit,
+      status,
+      agentId,
+    );
   }
 
   @Get(':id')
@@ -55,7 +76,12 @@ export class RentalLeasesController {
     @CurrentUser('role') userRole: Role,
     @Res() res: Response,
   ) {
-    const buffer = await this.service.generateReceiptPdf(leaseId, paymentId, userId, userRole);
+    const buffer = await this.service.generateReceiptPdf(
+      leaseId,
+      paymentId,
+      userId,
+      userRole,
+    );
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="quittance-${paymentId}.pdf"`,
@@ -104,7 +130,7 @@ export class RentalLeasesController {
   @ApiOperation({ summary: 'Enable or disable automatic renewal for a lease' })
   setAutoRenew(
     @Param('id') id: string,
-    @Body() body: { autoRenew: boolean },
+    @Body() body: SetAutoRenewDto,
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {
@@ -121,5 +147,18 @@ export class RentalLeasesController {
     @CurrentUser('role') userRole: Role,
   ) {
     return this.service.extend(id, body.months ?? 6, userId, userRole);
+  }
+
+  @Post('dev/trigger-auto-renew')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: '[DEV] Déclenche manuellement le cron de reconduction automatique',
+  })
+  async triggerAutoRenew() {
+    if (process.env.NODE_ENV === 'production') {
+      return { message: 'Non disponible en production' };
+    }
+    await this.service.autoRenewLeases();
+    return { message: 'Cron de reconduction automatique exécuté' };
   }
 }
