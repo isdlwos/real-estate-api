@@ -19,7 +19,10 @@ export class FavoritesService {
       const favorite = this.favoriteRepo.create({ userId, propertyId });
       return await this.favoriteRepo.save(favorite);
     } catch (err) {
-      if (err instanceof QueryFailedError && (err as { code?: string }).code === '23505') {
+      if (
+        err instanceof QueryFailedError &&
+        (err as { code?: string }).code === '23505'
+      ) {
         throw new ConflictException('Property already in favorites');
       }
       throw err;
@@ -32,12 +35,19 @@ export class FavoritesService {
     await this.favoriteRepo.remove(favorite);
   }
 
-  async isFavorited(userId: string, propertyId: string): Promise<{ favorited: boolean }> {
+  async isFavorited(
+    userId: string,
+    propertyId: string,
+  ): Promise<{ favorited: boolean }> {
     const count = await this.favoriteRepo.countBy({ userId, propertyId });
     return { favorited: count > 0 };
   }
 
-  async findAll(userId: string, page = 1, limit = 20): Promise<PaginatedResponse<Favorite>> {
+  async findAll(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<Favorite>> {
     const [data, total] = await this.favoriteRepo.findAndCount({
       where: { userId },
       relations: { property: { images: true } },

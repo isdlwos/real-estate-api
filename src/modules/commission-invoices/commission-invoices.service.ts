@@ -1,5 +1,9 @@
 import {
-  BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -8,17 +12,24 @@ import { Role } from '../../common/enums/role.enum';
 import { PaginatedResponse } from '../../common/pagination/paginated.response';
 import { PaydunyaService } from '../subscriptions/paydunya.service';
 import { Agent } from '../users/entities/agent.entity';
-import { RentPayment, PaymentStatus } from '../rental-leases/entities/rent-payment.entity';
-import { CommissionInvoice, CommissionInvoiceStatus } from './entities/commission-invoice.entity';
+import {
+  RentPayment,
+  PaymentStatus,
+} from '../rental-leases/entities/rent-payment.entity';
+import {
+  CommissionInvoice,
+  CommissionInvoiceStatus,
+} from './entities/commission-invoice.entity';
 
 @Injectable()
 export class CommissionInvoicesService {
   private readonly logger = new Logger(CommissionInvoicesService.name);
 
   constructor(
-    @InjectRepository(CommissionInvoice) private invoiceRepo: Repository<CommissionInvoice>,
-    @InjectRepository(RentPayment)       private paymentRepo: Repository<RentPayment>,
-    @InjectRepository(Agent)             private agentRepo: Repository<Agent>,
+    @InjectRepository(CommissionInvoice)
+    private invoiceRepo: Repository<CommissionInvoice>,
+    @InjectRepository(RentPayment) private paymentRepo: Repository<RentPayment>,
+    @InjectRepository(Agent) private agentRepo: Repository<Agent>,
     private paydunyaService: PaydunyaService,
   ) {}
 
@@ -59,7 +70,10 @@ export class CommissionInvoicesService {
       if (existing) continue;
 
       const totalRent = agentPayments.reduce((s, p) => s + Number(p.amount), 0);
-      const totalCommission = agentPayments.reduce((s, p) => s + Number(p.commissionAmount), 0);
+      const totalCommission = agentPayments.reduce(
+        (s, p) => s + Number(p.commissionAmount),
+        0,
+      );
       const rate = Number(agentPayments[0].lease.commissionRate);
 
       const invoice = await this.invoiceRepo.save(
@@ -81,7 +95,9 @@ export class CommissionInvoicesService {
         .where('id IN (:...ids)', { ids: agentPayments.map((p) => p.id) })
         .execute();
 
-      this.logger.log(`Facture ${invoice.id} créée pour agent ${agentId} — ${Math.round(totalCommission)} FCFA`);
+      this.logger.log(
+        `Facture ${invoice.id} créée pour agent ${agentId} — ${Math.round(totalCommission)} FCFA`,
+      );
     }
   }
 
@@ -108,14 +124,74 @@ export class CommissionInvoicesService {
       qb.where('inv.agentId = :agentId', { agentId: agent.id });
     } else {
       if (status) qb.andWhere('inv.status = :status', { status });
-      if (month)  qb.andWhere('inv.month = :month', { month });
+      if (month) qb.andWhere('inv.month = :month', { month });
     }
 
     const [data, total] = await qb.getManyAndCount();
     return new PaginatedResponse(data, total, page, limit);
   }
 
-  async findOne(id: string, userId: string, userRole: Role): Promise<CommissionInvoice> {
+  async currentMonthPreview(
+    userId: string,
+    userRole: Role,
+  ): Promise<{
+    month: string;
+    paymentsCount: number;
+    totalRentCollected: number;
+    commissionAmount: number;
+    payments: {
+      leaseId: string;
+      tenantName: string;
+      amount: number;
+      commissionAmount: number;
+      month: string;
+    }[];
+  }> {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const agent =
+      userRole !== Role.ADMIN
+        ? await this.agentRepo.findOneBy({ userId })
+        : null;
+
+    const qb = this.paymentRepo
+      .createQueryBuilder('p')
+      .innerJoinAndSelect('p.lease', 'lease')
+      .where('p.status = :status', { status: PaymentStatus.PAID })
+      .andWhere('p.month = :month', { month })
+      .andWhere('p."commissionInvoiceId" IS NULL')
+      .andWhere('p."commissionAmount" IS NOT NULL');
+
+    if (agent) {
+      qb.andWhere('lease."agentId" = :agentId', { agentId: agent.id });
+    }
+
+    const payments = await qb.getMany();
+
+    return {
+      month,
+      paymentsCount: payments.length,
+      totalRentCollected: payments.reduce((s, p) => s + Number(p.amount), 0),
+      commissionAmount: payments.reduce(
+        (s, p) => s + Number(p.commissionAmount),
+        0,
+      ),
+      payments: payments.map((p) => ({
+        leaseId: p.leaseId,
+        tenantName: p.lease.tenantName,
+        amount: Number(p.amount),
+        commissionAmount: Number(p.commissionAmount),
+        month: p.month,
+      })),
+    };
+  }
+
+  async findOne(
+    id: string,
+    userId: string,
+    userRole: Role,
+  ): Promise<CommissionInvoice> {
     const invoice = await this.invoiceRepo.findOne({
       where: { id },
       relations: { agent: { user: true } },
@@ -141,14 +217,16 @@ export class CommissionInvoicesService {
       .groupBy('inv.status')
       .getRawMany<{ status: string; count: string; amount: string }>();
 
-    const pending = rows.find((r) => r.status === CommissionInvoiceStatus.PENDING);
-    const paid    = rows.find((r) => r.status === CommissionInvoiceStatus.PAID);
+    const pending = rows.find(
+      (r) => r.status === CommissionInvoiceStatus.PENDING,
+    );
+    const paid = rows.find((r) => r.status === CommissionInvoiceStatus.PAID);
 
     return {
-      totalPending:  Number(pending?.count  ?? 0),
-      totalPaid:     Number(paid?.count     ?? 0),
+      totalPending: Number(pending?.count ?? 0),
+      totalPaid: Number(paid?.count ?? 0),
       amountPending: Number(pending?.amount ?? 0),
-      amountPaid:    Number(paid?.amount    ?? 0),
+      amountPaid: Number(paid?.amount ?? 0),
     };
   }
 
@@ -160,18 +238,20 @@ export class CommissionInvoicesService {
     if (!invoice) throw new NotFoundException('Facture introuvable');
     await this.checkAccess(invoice, userId, userRole);
     if (invoice.status !== CommissionInvoiceStatus.PENDING) {
-      throw new BadRequestException('Cette facture n\'est pas en attente de paiement');
+      throw new BadRequestException(
+        "Cette facture n'est pas en attente de paiement",
+      );
     }
 
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
-    const apiUrl      = process.env.API_URL      ?? 'http://localhost:3001';
+    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
 
     const paydunya = await this.paydunyaService.createInvoice({
       amount: Math.round(invoice.commissionAmount),
       description: `Commission gestion locative ${invoice.month} — Prestige Immobilier`,
       callbackUrl: `${apiUrl}/api/v1/commission-invoices/webhook`,
-      returnUrl:   `${frontendUrl}/account/commissions?status=success&inv=${invoice.id}`,
-      cancelUrl:   `${frontendUrl}/account/commissions?status=cancelled`,
+      returnUrl: `${frontendUrl}/account/commissions?status=success&inv=${invoice.id}`,
+      cancelUrl: `${frontendUrl}/account/commissions?status=cancelled`,
       customData: { invoice_id: invoice.id },
     });
 
@@ -202,10 +282,16 @@ export class CommissionInvoicesService {
     if (!invoice) throw new NotFoundException('Facture introuvable');
     await this.checkAccess(invoice, userId, userRole);
 
-    if (!invoice.paydunyaToken) throw new BadRequestException('Aucun paiement initié');
-    const status = await this.paydunyaService.getInvoiceStatus(invoice.paydunyaToken);
+    if (!invoice.paydunyaToken)
+      throw new BadRequestException('Aucun paiement initié');
+    const status = await this.paydunyaService.getInvoiceStatus(
+      invoice.paydunyaToken,
+    );
 
-    if (status === 'completed' && invoice.status !== CommissionInvoiceStatus.PAID) {
+    if (
+      status === 'completed' &&
+      invoice.status !== CommissionInvoiceStatus.PAID
+    ) {
       invoice.status = CommissionInvoiceStatus.PAID;
       invoice.paidAt = new Date();
       await this.invoiceRepo.save(invoice);
@@ -214,7 +300,11 @@ export class CommissionInvoicesService {
     return { status: invoice.status, invoice };
   }
 
-  private async checkAccess(invoice: CommissionInvoice, userId: string, userRole: Role): Promise<void> {
+  private async checkAccess(
+    invoice: CommissionInvoice,
+    userId: string,
+    userRole: Role,
+  ): Promise<void> {
     if (userRole === Role.ADMIN) return;
     const agent = await this.agentRepo.findOneBy({ userId });
     if (!agent || invoice.agentId !== agent.id) throw new ForbiddenException();

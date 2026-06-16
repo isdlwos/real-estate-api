@@ -8,7 +8,10 @@ import { PropertyToursController } from './property-tours.controller';
 import { PropertyToursService } from './property-tours.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PropertyTour, Property, Agent]), CloudinaryModule],
+  imports: [
+    TypeOrmModule.forFeature([PropertyTour, Property, Agent]),
+    CloudinaryModule,
+  ],
   controllers: [PropertyToursController],
   providers: [PropertyToursService],
 })

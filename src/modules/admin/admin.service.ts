@@ -12,7 +12,8 @@ export class AdminService {
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
     @InjectRepository(Property) private propertyRepo: Repository<Property>,
-    @InjectRepository(Appointment) private appointmentRepo: Repository<Appointment>,
+    @InjectRepository(Appointment)
+    private appointmentRepo: Repository<Appointment>,
   ) {}
 
   async getStats() {
@@ -45,16 +46,22 @@ export class AdminService {
     return {
       users: {
         total: usersByRole.reduce((s, r) => s + Number(r.count), 0),
-        byRole: Object.fromEntries(usersByRole.map((r) => [r.role, Number(r.count)])),
+        byRole: Object.fromEntries(
+          usersByRole.map((r) => [r.role, Number(r.count)]),
+        ),
       },
       agents: { total: agentCount },
       properties: {
         total: propertiesByStatus.reduce((s, r) => s + Number(r.count), 0),
-        byStatus: Object.fromEntries(propertiesByStatus.map((r) => [r.status, Number(r.count)])),
+        byStatus: Object.fromEntries(
+          propertiesByStatus.map((r) => [r.status, Number(r.count)]),
+        ),
       },
       appointments: {
         total: appointmentsByStatus.reduce((s, r) => s + Number(r.count), 0),
-        byStatus: Object.fromEntries(appointmentsByStatus.map((r) => [r.status, Number(r.count)])),
+        byStatus: Object.fromEntries(
+          appointmentsByStatus.map((r) => [r.status, Number(r.count)]),
+        ),
       },
     };
   }

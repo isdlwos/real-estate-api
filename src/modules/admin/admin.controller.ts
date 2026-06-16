@@ -12,7 +12,10 @@ export class AdminController {
   constructor(private adminService: AdminService) {}
 
   @Get('stats')
-  @ApiOperation({ summary: 'Global dashboard stats: users, agents, properties, appointments (admin)' })
+  @ApiOperation({
+    summary:
+      'Global dashboard stats: users, agents, properties, appointments (admin)',
+  })
   getStats() {
     return this.adminService.getStats();
   }

@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../../common/enums/role.enum';
@@ -14,11 +19,15 @@ import {
 @Injectable()
 export class DiasporaTransactionsService {
   constructor(
-    @InjectRepository(DiasporaTransaction) private txRepo: Repository<DiasporaTransaction>,
+    @InjectRepository(DiasporaTransaction)
+    private txRepo: Repository<DiasporaTransaction>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
   ) {}
 
-  async create(dto: CreateTransactionDto, userId: string): Promise<DiasporaTransaction> {
+  async create(
+    dto: CreateTransactionDto,
+    userId: string,
+  ): Promise<DiasporaTransaction> {
     const agent = await this.agentRepo.findOneBy({ userId });
     if (!agent) throw new ForbiddenException('Agent profile required');
 
@@ -27,7 +36,10 @@ export class DiasporaTransactionsService {
       clientEmail: dto.clientEmail,
       status: TransactionStatus.ACTIVE,
     });
-    if (existing) throw new ConflictException('Un dossier actif existe déjà pour ce client');
+    if (existing)
+      throw new ConflictException(
+        'Un dossier actif existe déjà pour ce client',
+      );
 
     return this.txRepo.save(
       this.txRepo.create({
@@ -43,7 +55,12 @@ export class DiasporaTransactionsService {
     );
   }
 
-  async findAll(userId: string, userRole: Role, page = 1, limit = 20): Promise<PaginatedResponse<DiasporaTransaction>> {
+  async findAll(
+    userId: string,
+    userRole: Role,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<DiasporaTransaction>> {
     const qb = this.txRepo
       .createQueryBuilder('tx')
       .leftJoinAndSelect('tx.property', 'property')
@@ -62,7 +79,11 @@ export class DiasporaTransactionsService {
     return new PaginatedResponse(data, total, page, limit);
   }
 
-  async findOne(id: string, userId: string, userRole: Role): Promise<DiasporaTransaction> {
+  async findOne(
+    id: string,
+    userId: string,
+    userRole: Role,
+  ): Promise<DiasporaTransaction> {
     const tx = await this.txRepo.findOne({
       where: { id },
       relations: { property: { images: true } },
@@ -72,7 +93,12 @@ export class DiasporaTransactionsService {
     return tx;
   }
 
-  async toggleStep(txId: string, stepId: string, userId: string, userRole: Role): Promise<DiasporaTransaction> {
+  async toggleStep(
+    txId: string,
+    stepId: string,
+    userId: string,
+    userRole: Role,
+  ): Promise<DiasporaTransaction> {
     const tx = await this.txRepo.findOneBy({ id: txId });
     if (!tx) throw new NotFoundException('Transaction not found');
     await this.checkAccess(tx, userId, userRole);
@@ -84,12 +110,18 @@ export class DiasporaTransactionsService {
 
     const allDone = tx.steps.every((s) => s.completedAt !== null);
     if (allDone) tx.status = TransactionStatus.COMPLETED;
-    else if (tx.status === TransactionStatus.COMPLETED) tx.status = TransactionStatus.ACTIVE;
+    else if (tx.status === TransactionStatus.COMPLETED)
+      tx.status = TransactionStatus.ACTIVE;
 
     return this.txRepo.save(tx);
   }
 
-  async updateNotes(txId: string, notes: string, userId: string, userRole: Role): Promise<DiasporaTransaction> {
+  async updateNotes(
+    txId: string,
+    notes: string,
+    userId: string,
+    userRole: Role,
+  ): Promise<DiasporaTransaction> {
     const tx = await this.txRepo.findOneBy({ id: txId });
     if (!tx) throw new NotFoundException('Transaction not found');
     await this.checkAccess(tx, userId, userRole);
@@ -105,7 +137,11 @@ export class DiasporaTransactionsService {
     await this.txRepo.save(tx);
   }
 
-  private async checkAccess(tx: DiasporaTransaction, userId: string, userRole: Role): Promise<void> {
+  private async checkAccess(
+    tx: DiasporaTransaction,
+    userId: string,
+    userRole: Role,
+  ): Promise<void> {
     if (userRole === Role.ADMIN) return;
     const agent = await this.agentRepo.findOneBy({ userId });
     if (!agent || tx.agentId !== agent.id) throw new ForbiddenException();

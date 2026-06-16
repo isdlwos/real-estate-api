@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, In, Repository } from 'typeorm';
-import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from './entities/subscription.entity';
 import { Property } from '../properties/entities/property.entity';
 import { Agent } from '../users/entities/agent.entity';
 import { PropertyStatus } from '../../common/enums/property-status.enum';
@@ -65,7 +68,9 @@ export class SubscriptionsTask {
         .execute();
 
       if (result.affected && result.affected > 0) {
-        this.logger.log(`${result.affected} annonce(s) repassée(s) en brouillon suite à expiration d'abonnement.`);
+        this.logger.log(
+          `${result.affected} annonce(s) repassée(s) en brouillon suite à expiration d'abonnement.`,
+        );
       }
     }
   }
@@ -92,16 +97,18 @@ export class SubscriptionsTask {
 
     if (expiring.length === 0) return;
 
-    this.logger.log(`Envoi de ${expiring.length} notification(s) d'expiration J-7.`);
+    this.logger.log(
+      `Envoi de ${expiring.length} notification(s) d'expiration J-7.`,
+    );
 
     for (const sub of expiring) {
       try {
         await this.mailService.sendSubscriptionExpiringSoon({
-          to:        sub.agent.email,
+          to: sub.agent.email,
           firstName: sub.agent.firstName,
-          planName:  sub.plan.name,
+          planName: sub.plan.name,
           expiresAt: sub.expiresAt!,
-          daysLeft:  7,
+          daysLeft: 7,
         });
       } catch (err) {
         this.logger.error(`Échec envoi email à ${sub.agent.email}`, err);

@@ -10,7 +10,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -48,7 +53,13 @@ export class PropertyToursController {
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {
-    return this.propertyToursService.upload(propertyId, file, title, userId, userRole);
+    return this.propertyToursService.upload(
+      propertyId,
+      file,
+      title,
+      userId,
+      userRole,
+    );
   }
 
   @Get('properties/:propertyId/tours')

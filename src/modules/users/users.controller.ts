@@ -57,9 +57,15 @@ export class UsersController {
 
   @Get('agents')
   @Public()
-  @ApiOperation({ summary: 'List all agents with their profile (public, paginated)' })
+  @ApiOperation({
+    summary: 'List all agents with their profile (public, paginated)',
+  })
   findAllAgents(@Query() query: AgentsFilterDto) {
-    return this.usersService.findAllAgents(query.page, query.limit, query.diasporaOnly);
+    return this.usersService.findAllAgents(
+      query.page,
+      query.limit,
+      query.diasporaOnly,
+    );
   }
 
   @Get('me')
@@ -76,12 +82,19 @@ export class UsersController {
 
   @Get('me/properties')
   @Roles(Role.AGENT, Role.ADMIN)
-  @ApiOperation({ summary: "Get own properties — all statuses (agent dashboard)" })
+  @ApiOperation({
+    summary: 'Get own properties — all statuses (agent dashboard)',
+  })
   getMyProperties(
     @CurrentUser('id') userId: string,
     @Query() query: MyPropertiesFilterDto,
   ) {
-    return this.usersService.getMyProperties(userId, query.page, query.limit, query.status);
+    return this.usersService.getMyProperties(
+      userId,
+      query.page,
+      query.limit,
+      query.status,
+    );
   }
 
   @Patch('me/password')
@@ -90,7 +103,11 @@ export class UsersController {
     @CurrentUser('id') userId: string,
     @Body() dto: ChangePasswordDto,
   ) {
-    return this.usersService.changePassword(userId, dto.currentPassword, dto.newPassword);
+    return this.usersService.changePassword(
+      userId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 
   @Patch('me/avatar')
@@ -110,7 +127,10 @@ export class UsersController {
     @CurrentUser('id') userId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.usersService.updateAvatar(userId, `/uploads/avatars/${file.filename}`);
+    return this.usersService.updateAvatar(
+      userId,
+      `/uploads/avatars/${file.filename}`,
+    );
   }
 
   @Get(':id')
@@ -150,7 +170,9 @@ export class UsersController {
 
   @Patch(':id/diaspora-specialist')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Toggle diaspora specialist flag on an agent (admin)' })
+  @ApiOperation({
+    summary: 'Toggle diaspora specialist flag on an agent (admin)',
+  })
   toggleDiasporaSpecialist(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.toggleDiasporaSpecialist(id);
   }
@@ -169,7 +191,11 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query() pagination: PaginationDto,
   ) {
-    return this.usersService.getAgentProperties(id, pagination.page, pagination.limit);
+    return this.usersService.getAgentProperties(
+      id,
+      pagination.page,
+      pagination.limit,
+    );
   }
 
   @Patch('me/agent-profile')

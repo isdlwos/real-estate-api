@@ -1,10 +1,16 @@
 import {
-  Injectable, NotFoundException, BadRequestException, Logger,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Plan } from './entities/plan.entity';
-import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from './entities/subscription.entity';
 import { Payment, PaymentStatus } from './entities/payment.entity';
 import { PaydunyaService } from './paydunya.service';
 
@@ -41,7 +47,10 @@ export class SubscriptionsService {
   }
 
   async createCheckout(agentId: string, planSlug: string, _baseUrl: string) {
-    const plan = await this.planRepo.findOneBy({ slug: planSlug, isActive: true });
+    const plan = await this.planRepo.findOneBy({
+      slug: planSlug,
+      isActive: true,
+    });
     if (!plan) throw new NotFoundException('Plan introuvable');
 
     // Annuler les souscriptions PENDING existantes pour éviter les doublons
@@ -67,20 +76,20 @@ export class SubscriptionsService {
     });
     await this.paymentRepo.save(payment);
 
-    const apiUrl      = process.env.API_URL      ?? 'http://localhost:3001';
+    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
 
     const invoice = await this.paydunyaService.createInvoice({
-      amount:      plan.price,
+      amount: plan.price,
       description: `Abonnement ${plan.name} — Prestige Immobilier`,
       callbackUrl: `${apiUrl}/api/v1/subscriptions/webhook`,
-      returnUrl:   `${frontendUrl}/account/billing?status=success&sub=${subscription.id}`,
-      cancelUrl:   `${frontendUrl}/account/billing?status=cancelled`,
+      returnUrl: `${frontendUrl}/account/billing?status=success&sub=${subscription.id}`,
+      cancelUrl: `${frontendUrl}/account/billing?status=cancelled`,
       customData: {
         subscription_id: subscription.id,
-        payment_id:      payment.id,
-        agent_id:        agentId,
-        plan_slug:       plan.slug,
+        payment_id: payment.id,
+        agent_id: agentId,
+        plan_slug: plan.slug,
       },
     });
 
@@ -91,7 +100,7 @@ export class SubscriptionsService {
     await this.paymentRepo.save(payment);
 
     return {
-      checkoutUrl:    invoice.checkoutUrl,
+      checkoutUrl: invoice.checkoutUrl,
       subscriptionId: subscription.id,
     };
   }
@@ -106,7 +115,9 @@ export class SubscriptionsService {
     const status = await this.paydunyaService.getInvoiceStatus(invoiceToken);
     if (status !== 'completed') return;
 
-    const payment = await this.paymentRepo.findOneBy({ paydunyaToken: invoiceToken });
+    const payment = await this.paymentRepo.findOneBy({
+      paydunyaToken: invoiceToken,
+    });
     if (!payment || payment.status === PaymentStatus.COMPLETED) return;
 
     payment.status = PaymentStatus.COMPLETED;
@@ -124,12 +135,14 @@ export class SubscriptionsService {
     const expiresAt = new Date(now);
     expiresAt.setMonth(expiresAt.getMonth() + 1);
 
-    subscription.status    = SubscriptionStatus.ACTIVE;
+    subscription.status = SubscriptionStatus.ACTIVE;
     subscription.startDate = now;
     subscription.expiresAt = expiresAt;
     await this.subscriptionRepo.save(subscription);
 
-    this.logger.log(`Abonnement activé: ${subscription.id} (agent: ${subscription.agentId})`);
+    this.logger.log(
+      `Abonnement activé: ${subscription.id} (agent: ${subscription.agentId})`,
+    );
   }
 
   async confirmPayment(subscriptionId: string, agentId: string) {
@@ -147,7 +160,9 @@ export class SubscriptionsService {
       throw new BadRequestException('Aucun token de paiement associé');
     }
 
-    const status = await this.paydunyaService.getInvoiceStatus(subscription.paydunyaToken);
+    const status = await this.paydunyaService.getInvoiceStatus(
+      subscription.paydunyaToken,
+    );
     if (status === 'completed') {
       await this.handleWebhook({ token: subscription.paydunyaToken });
       const updated = await this.subscriptionRepo.findOne({

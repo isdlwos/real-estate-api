@@ -38,7 +38,10 @@ export class CreatePropertyDto {
   @IsEnum(PropertyCategory)
   category: PropertyCategory;
 
-  @ApiPropertyOptional({ enum: PropertyStatus, default: PropertyStatus.AVAILABLE })
+  @ApiPropertyOptional({
+    enum: PropertyStatus,
+    default: PropertyStatus.AVAILABLE,
+  })
   @IsOptional()
   @IsEnum(PropertyStatus)
   status?: PropertyStatus;

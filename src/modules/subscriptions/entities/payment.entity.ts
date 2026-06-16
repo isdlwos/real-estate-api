@@ -1,13 +1,17 @@
 import {
-  Column, CreateDateColumn, Entity, JoinColumn,
-  ManyToOne, PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
 export enum PaymentStatus {
-  PENDING   = 'pending',
+  PENDING = 'pending',
   COMPLETED = 'completed',
-  FAILED    = 'failed',
+  FAILED = 'failed',
 }
 
 @Entity('payments')

@@ -7,11 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -49,7 +45,9 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Refresh access token (send refresh token as Bearer)' })
+  @ApiOperation({
+    summary: 'Refresh access token (send refresh token as Bearer)',
+  })
   refresh(@CurrentUser() user: User) {
     return this.authService.refresh(user);
   }
@@ -75,7 +73,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Request a password reset token',
-    description: 'Always returns 200 to prevent user enumeration. In production the token is sent by email — here it is returned directly for development.',
+    description:
+      'Always returns 200 to prevent user enumeration. In production the token is sent by email — here it is returned directly for development.',
   })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
@@ -84,7 +83,9 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reset password using the token received from forgot-password' })
+  @ApiOperation({
+    summary: 'Reset password using the token received from forgot-password',
+  })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password);
   }

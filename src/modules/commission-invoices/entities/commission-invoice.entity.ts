@@ -1,12 +1,17 @@
 import {
-  Column, CreateDateColumn, Entity, JoinColumn,
-  ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Agent } from '../../users/entities/agent.entity';
 
 export enum CommissionInvoiceStatus {
-  PENDING  = 'pending',
-  PAID     = 'paid',
+  PENDING = 'pending',
+  PAID = 'paid',
   CANCELLED = 'cancelled',
 }
 
@@ -37,7 +42,11 @@ export class CommissionInvoice {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   commissionAmount: number;
 
-  @Column({ type: 'enum', enum: CommissionInvoiceStatus, default: CommissionInvoiceStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: CommissionInvoiceStatus,
+    default: CommissionInvoiceStatus.PENDING,
+  })
   status: CommissionInvoiceStatus;
 
   @Column({ nullable: true, type: 'varchar' })

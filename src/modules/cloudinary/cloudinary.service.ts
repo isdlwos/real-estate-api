@@ -9,7 +9,10 @@ cloudinary.config({
 
 @Injectable()
 export class CloudinaryService {
-  upload(file: Express.Multer.File, folder = 'properties'): Promise<UploadApiResponse> {
+  upload(
+    file: Express.Multer.File,
+    folder = 'properties',
+  ): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
@@ -18,7 +21,10 @@ export class CloudinaryService {
           transformation: [{ quality: 'auto', fetch_format: 'auto' }],
         },
         (error, result) => {
-          if (error || !result) return reject(new InternalServerErrorException('Cloudinary upload failed'));
+          if (error || !result)
+            return reject(
+              new InternalServerErrorException('Cloudinary upload failed'),
+            );
           resolve(result);
         },
       );

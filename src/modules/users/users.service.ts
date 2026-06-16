@@ -12,7 +12,10 @@ import { Role } from '../../common/enums/role.enum';
 import { PaginatedResponse } from '../../common/pagination/paginated.response';
 import { Property } from '../properties/entities/property.entity';
 import { PropertyStatus } from '../../common/enums/property-status.enum';
-import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/entities/subscription.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateAgentDto } from './dto/update-agent.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -25,7 +28,8 @@ export class UsersService {
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
     @InjectRepository(Property) private propertyRepo: Repository<Property>,
-    @InjectRepository(Subscription) private subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(Subscription)
+    private subscriptionRepo: Repository<Subscription>,
   ) {}
 
   async create(dto: CreateUserDto): Promise<User> {
@@ -37,7 +41,11 @@ export class UsersService {
     return this.userRepo.save(user);
   }
 
-  async findAll(page = 1, limit = 20, role?: Role): Promise<PaginatedResponse<User>> {
+  async findAll(
+    page = 1,
+    limit = 20,
+    role?: Role,
+  ): Promise<PaginatedResponse<User>> {
     const [data, total] = await this.userRepo.findAndCount({
       where: role ? { role } : undefined,
       relations: { agentProfile: true },
@@ -60,11 +68,24 @@ export class UsersService {
   async findOneByEmail(email: string): Promise<User | null> {
     return this.userRepo.findOne({
       where: { email },
-      select: { id: true, email: true, password: true, role: true, firstName: true, lastName: true, refreshTokenHash: true },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        refreshTokenHash: true,
+      },
     });
   }
 
-  async update(id: string, dto: UpdateUserDto, requesterId: string, requesterRole: Role): Promise<User> {
+  async update(
+    id: string,
+    dto: UpdateUserDto,
+    requesterId: string,
+    requesterRole: Role,
+  ): Promise<User> {
     const user = await this.findOneById(id);
     if (requesterRole !== Role.ADMIN && requesterId !== id) {
       throw new ForbiddenException();
@@ -84,12 +105,17 @@ export class UsersService {
     await this.userRepo.remove(user);
   }
 
-  async updateRefreshToken(userId: string, rawToken: string | null): Promise<void> {
+  async updateRefreshToken(
+    userId: string,
+    rawToken: string | null,
+  ): Promise<void> {
     const hash = rawToken ? await bcrypt.hash(rawToken, 10) : null;
     await this.userRepo.update(userId, { refreshTokenHash: hash });
   }
 
-  async setPasswordResetToken(email: string): Promise<{ token: string; user: User } | null> {
+  async setPasswordResetToken(
+    email: string,
+  ): Promise<{ token: string; user: User } | null> {
     const user = await this.userRepo.findOneBy({ email });
     if (!user) return null;
 
@@ -114,14 +140,21 @@ export class UsersService {
 
     let matched: User | null = null;
     for (const u of users) {
-      if (u.passwordResetToken && await bcrypt.compare(rawToken, u.passwordResetToken)) {
+      if (
+        u.passwordResetToken &&
+        (await bcrypt.compare(rawToken, u.passwordResetToken))
+      ) {
         matched = u;
         break;
       }
     }
 
-    if (!matched) throw new BadRequestException('Invalid or expired reset token');
-    if (!matched.passwordResetExpiry || matched.passwordResetExpiry < new Date()) {
+    if (!matched)
+      throw new BadRequestException('Invalid or expired reset token');
+    if (
+      !matched.passwordResetExpiry ||
+      matched.passwordResetExpiry < new Date()
+    ) {
       throw new BadRequestException('Invalid or expired reset token');
     }
 
@@ -146,14 +179,21 @@ export class UsersService {
     return this.agentRepo.save(agent);
   }
 
-  async updateAgentProfile(userId: string, dto: UpdateAgentDto): Promise<Agent> {
+  async updateAgentProfile(
+    userId: string,
+    dto: UpdateAgentDto,
+  ): Promise<Agent> {
     const agent = await this.agentRepo.findOneBy({ userId });
     if (!agent) throw new NotFoundException('Agent profile not found');
     Object.assign(agent, dto);
     return this.agentRepo.save(agent);
   }
 
-  async getAgentProfile(userId: string): Promise<Agent & { activeSubscription?: { planName: string; planSlug: string } }> {
+  async getAgentProfile(
+    userId: string,
+  ): Promise<
+    Agent & { activeSubscription?: { planName: string; planSlug: string } }
+  > {
     const agent = await this.agentRepo.findOne({
       where: { userId },
       relations: { user: true },
@@ -175,7 +215,12 @@ export class UsersService {
     return agent;
   }
 
-  async getMyProperties(userId: string, page = 1, limit = 20, status?: PropertyStatus): Promise<PaginatedResponse<Property>> {
+  async getMyProperties(
+    userId: string,
+    page = 1,
+    limit = 20,
+    status?: PropertyStatus,
+  ): Promise<PaginatedResponse<Property>> {
     const agent = await this.agentRepo.findOneBy({ userId });
     if (!agent) throw new NotFoundException('Agent profile not found');
 
@@ -189,7 +234,11 @@ export class UsersService {
     return new PaginatedResponse(data, total, page, limit);
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
       select: { id: true, password: true },
@@ -200,10 +249,17 @@ export class UsersService {
     if (!valid) throw new BadRequestException('Current password is incorrect');
 
     const hashed = await bcrypt.hash(newPassword, 12);
-    await this.userRepo.update(userId, { password: hashed, refreshTokenHash: null });
+    await this.userRepo.update(userId, {
+      password: hashed,
+      refreshTokenHash: null,
+    });
   }
 
-  async findAllAgents(page = 1, limit = 20, diasporaOnly: boolean | string = false): Promise<PaginatedResponse<Agent>> {
+  async findAllAgents(
+    page = 1,
+    limit = 20,
+    diasporaOnly: boolean | string = false,
+  ): Promise<PaginatedResponse<Agent>> {
     // enableImplicitConversion converts 'false' → Boolean('false') = true, so compare strictly
     const filterDiaspora = diasporaOnly === true || diasporaOnly === 'true';
     const qb = this.agentRepo
@@ -227,7 +283,11 @@ export class UsersService {
     return this.agentRepo.save(agent);
   }
 
-  async getAgentProperties(userId: string, page = 1, limit = 20): Promise<PaginatedResponse<Property>> {
+  async getAgentProperties(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<Property>> {
     const agent = await this.agentRepo.findOneBy({ userId });
     if (!agent) throw new NotFoundException('Agent profile not found');
 

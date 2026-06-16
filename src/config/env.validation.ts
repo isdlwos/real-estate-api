@@ -13,7 +13,9 @@ export function validateEnv(): void {
 
   const missing = REQUIRED_IN_PRODUCTION.filter((key) => !process.env[key]);
   if (missing.length > 0) {
-    throw new Error(`Variables d'environnement manquantes : ${missing.join(', ')}`);
+    throw new Error(
+      `Variables d'environnement manquantes : ${missing.join(', ')}`,
+    );
   }
 
   const insecure = REQUIRED_IN_PRODUCTION.filter((key) => {
@@ -21,6 +23,8 @@ export function validateEnv(): void {
     return INSECURE_DEFAULTS.some((d) => val.includes(d));
   });
   if (insecure.length > 0) {
-    throw new Error(`Valeurs non sécurisées détectées pour : ${insecure.join(', ')} — utilisez openssl rand -base64 32`);
+    throw new Error(
+      `Valeurs non sécurisées détectées pour : ${insecure.join(', ')} — utilisez openssl rand -base64 32`,
+    );
   }
 }

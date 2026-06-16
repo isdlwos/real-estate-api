@@ -10,11 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
@@ -46,7 +42,12 @@ export class AppointmentsController {
     @CurrentUser('role') userRole: Role,
     @Query() pagination: PaginationDto,
   ) {
-    return this.appointmentsService.findAll(userId, userRole, pagination.page, pagination.limit);
+    return this.appointmentsService.findAll(
+      userId,
+      userRole,
+      pagination.page,
+      pagination.limit,
+    );
   }
 
   @Get(':id')
@@ -60,7 +61,10 @@ export class AppointmentsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Reschedule appointment — changes date, resets status to pending (client: own pending, admin: any)' })
+  @ApiOperation({
+    summary:
+      'Reschedule appointment — changes date, resets status to pending (client: own pending, admin: any)',
+  })
   reschedule(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RescheduleAppointmentDto,
@@ -72,7 +76,9 @@ export class AppointmentsController {
 
   @Patch(':id/status')
   @Roles(Role.AGENT, Role.ADMIN)
-  @ApiOperation({ summary: 'Update appointment status (agent: own, admin: any)' })
+  @ApiOperation({
+    summary: 'Update appointment status (agent: own, admin: any)',
+  })
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAppointmentDto,
@@ -83,7 +89,9 @@ export class AppointmentsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Cancel appointment (client: own pending, admin: any)' })
+  @ApiOperation({
+    summary: 'Cancel appointment (client: own pending, admin: any)',
+  })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,

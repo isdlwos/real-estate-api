@@ -15,7 +15,8 @@ import { PropertyImage } from './entities/property-image.entity';
 @Injectable()
 export class PropertyImagesService {
   constructor(
-    @InjectRepository(PropertyImage) private imageRepo: Repository<PropertyImage>,
+    @InjectRepository(PropertyImage)
+    private imageRepo: Repository<PropertyImage>,
     @InjectRepository(Property) private propertyRepo: Repository<Property>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
     private cloudinary: CloudinaryService,
@@ -35,13 +36,20 @@ export class PropertyImagesService {
     const existing = await this.imageRepo.countBy({ propertyId });
 
     if (existing >= MAX_IMAGES) {
-      throw new BadRequestException(`Ce bien a déjà atteint le maximum de ${MAX_IMAGES} photos.`);
+      throw new BadRequestException(
+        `Ce bien a déjà atteint le maximum de ${MAX_IMAGES} photos.`,
+      );
     }
 
     const allowed = files.slice(0, MAX_IMAGES - existing);
 
     const uploaded = await Promise.all(
-      allowed.map((file) => this.cloudinary.upload(file, `prestige-immobilier/properties/${propertyId}`)),
+      allowed.map((file) =>
+        this.cloudinary.upload(
+          file,
+          `prestige-immobilier/properties/${propertyId}`,
+        ),
+      ),
     );
 
     const images = uploaded.map((result, index) =>
@@ -56,13 +64,20 @@ export class PropertyImagesService {
     return this.imageRepo.save(images);
   }
 
-  async setPrimary(imageId: string, userId: string, userRole: Role): Promise<PropertyImage> {
+  async setPrimary(
+    imageId: string,
+    userId: string,
+    userRole: Role,
+  ): Promise<PropertyImage> {
     const image = await this.imageRepo.findOneBy({ id: imageId });
     if (!image) throw new NotFoundException('Image not found');
 
     await this.checkPropertyOwnership(image.propertyId, userId, userRole);
 
-    await this.imageRepo.update({ propertyId: image.propertyId }, { isPrimary: false });
+    await this.imageRepo.update(
+      { propertyId: image.propertyId },
+      { isPrimary: false },
+    );
     image.isPrimary = true;
     return this.imageRepo.save(image);
   }

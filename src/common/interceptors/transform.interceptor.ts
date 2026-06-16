@@ -9,10 +9,18 @@ import { map } from 'rxjs/operators';
 
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<T, unknown> {
-  intercept(_context: ExecutionContext, next: CallHandler<T>): Observable<unknown> {
+  intercept(
+    _context: ExecutionContext,
+    next: CallHandler<T>,
+  ): Observable<unknown> {
     return next.handle().pipe(
       map((data) => {
-        if (data && typeof data === 'object' && 'data' in data && 'meta' in data) {
+        if (
+          data &&
+          typeof data === 'object' &&
+          'data' in data &&
+          'meta' in data
+        ) {
           return data;
         }
         return { data };

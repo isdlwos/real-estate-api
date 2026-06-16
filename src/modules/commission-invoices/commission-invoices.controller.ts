@@ -1,5 +1,12 @@
 import {
-  Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
 } from '@nestjs/common';
 import { CommissionInvoicesService } from './commission-invoices.service';
 import { CreateCommissionCheckoutDto } from './dto/create-commission-checkout.dto';
@@ -23,13 +30,29 @@ export class CommissionInvoicesController {
     @Query('status') status?: string,
     @Query('month') month?: string,
   ) {
-    return this.service.findAll(userId, userRole, Number(page), Number(limit), status, month);
+    return this.service.findAll(
+      userId,
+      userRole,
+      Number(page),
+      Number(limit),
+      status,
+      month,
+    );
   }
 
   @Roles(Role.ADMIN)
   @Get('admin/stats')
   adminStats(@Query('month') month?: string) {
     return this.service.adminStats(month);
+  }
+
+  @Roles(Role.AGENT, Role.ADMIN)
+  @Get('current-month')
+  currentMonthPreview(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: Role,
+  ) {
+    return this.service.currentMonthPreview(userId, userRole);
   }
 
   @Roles(Role.AGENT, Role.ADMIN)

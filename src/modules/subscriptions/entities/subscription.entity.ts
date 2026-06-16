@@ -1,14 +1,19 @@
 import {
-  Column, CreateDateColumn, Entity, JoinColumn,
-  ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Plan } from './plan.entity';
 
 export enum SubscriptionStatus {
-  PENDING  = 'pending',
-  ACTIVE   = 'active',
-  EXPIRED  = 'expired',
+  PENDING = 'pending',
+  ACTIVE = 'active',
+  EXPIRED = 'expired',
   CANCELLED = 'cancelled',
 }
 

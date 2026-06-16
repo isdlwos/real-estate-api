@@ -58,7 +58,10 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToOne(() => Agent, (agent) => agent.user, { nullable: true, cascade: true })
+  @OneToOne(() => Agent, (agent) => agent.user, {
+    nullable: true,
+    cascade: true,
+  })
   agentProfile: Agent;
 
   @OneToMany(() => Appointment, (appt) => appt.client)

@@ -37,6 +37,8 @@ export class AddRentalLeases1781340000000 implements MigrationInterface {
     `);
   }
   async down(qr: QueryRunner): Promise<void> {
-    await qr.query(`DROP TABLE IF EXISTS rent_payments; DROP TABLE IF EXISTS rental_leases; DROP TYPE IF EXISTS payment_status_enum; DROP TYPE IF EXISTS lease_status_enum;`);
+    await qr.query(
+      `DROP TABLE IF EXISTS rent_payments; DROP TABLE IF EXISTS rental_leases; DROP TYPE IF EXISTS payment_status_enum; DROP TYPE IF EXISTS lease_status_enum;`,
+    );
   }
 }

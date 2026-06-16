@@ -23,15 +23,23 @@ export interface TransactionStep {
 }
 
 export const DEFAULT_STEPS: TransactionStep[] = [
-  { id: 'contact',      label: 'Premier contact établi',            completedAt: null },
-  { id: 'virtual_tour', label: 'Visite virtuelle 360° réalisée',    completedAt: null },
-  { id: 'documents',    label: 'Documents du bien vérifiés',        completedAt: null },
-  { id: 'offer',        label: 'Offre soumise et acceptée',         completedAt: null },
-  { id: 'compromise',   label: 'Compromis de vente signé',          completedAt: null },
-  { id: 'notary',       label: 'Vérification notariale effectuée',  completedAt: null },
-  { id: 'financing',    label: 'Financement confirmé',              completedAt: null },
-  { id: 'deed',         label: 'Acte de vente signé',               completedAt: null },
-  { id: 'keys',         label: 'Remise des clés',                   completedAt: null },
+  { id: 'contact', label: 'Premier contact établi', completedAt: null },
+  {
+    id: 'virtual_tour',
+    label: 'Visite virtuelle 360° réalisée',
+    completedAt: null,
+  },
+  { id: 'documents', label: 'Documents du bien vérifiés', completedAt: null },
+  { id: 'offer', label: 'Offre soumise et acceptée', completedAt: null },
+  { id: 'compromise', label: 'Compromis de vente signé', completedAt: null },
+  {
+    id: 'notary',
+    label: 'Vérification notariale effectuée',
+    completedAt: null,
+  },
+  { id: 'financing', label: 'Financement confirmé', completedAt: null },
+  { id: 'deed', label: 'Acte de vente signé', completedAt: null },
+  { id: 'keys', label: 'Remise des clés', completedAt: null },
 ];
 
 @Entity('diaspora_transactions')
@@ -57,7 +65,11 @@ export class DiasporaTransaction {
   @Column({ type: 'varchar', nullable: true })
   clientCountry: string | null;
 
-  @Column({ type: 'enum', enum: TransactionStatus, default: TransactionStatus.ACTIVE })
+  @Column({
+    type: 'enum',
+    enum: TransactionStatus,
+    default: TransactionStatus.ACTIVE,
+  })
   status: TransactionStatus;
 
   @Column({ type: 'jsonb' })

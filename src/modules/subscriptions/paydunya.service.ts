@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 
@@ -24,13 +28,17 @@ export class PaydunyaService {
     cancelUrl: string;
     customData?: Record<string, string>;
   }): Promise<PaydunyaInvoice> {
-    const masterKey  = process.env.PAYDUNYA_MASTER_KEY  ?? 'test_master_key';
+    const masterKey = process.env.PAYDUNYA_MASTER_KEY ?? 'test_master_key';
     const privateKey = process.env.PAYDUNYA_PRIVATE_KEY ?? 'test_private_key';
-    const token      = process.env.PAYDUNYA_TOKEN        ?? 'test_token';
-    const isSandbox  = process.env.PAYDUNYA_MODE !== 'live';
+    const token = process.env.PAYDUNYA_TOKEN ?? 'test_token';
+    const isSandbox = process.env.PAYDUNYA_MODE !== 'live';
 
-    const baseUrl = isSandbox ? SANDBOX_BASE : 'https://app.paydunya.com/api/v1';
-    const checkoutBase = isSandbox ? SANDBOX_CHECKOUT : 'https://app.paydunya.com/checkout/1.1';
+    const baseUrl = isSandbox
+      ? SANDBOX_BASE
+      : 'https://app.paydunya.com/api/v1';
+    const checkoutBase = isSandbox
+      ? SANDBOX_CHECKOUT
+      : 'https://app.paydunya.com/checkout/1.1';
 
     const payload = {
       invoice: {
@@ -42,8 +50,8 @@ export class PaydunyaService {
       },
       actions: {
         callback_url: opts.callbackUrl,
-        return_url:   opts.returnUrl,
-        cancel_url:   opts.cancelUrl,
+        return_url: opts.returnUrl,
+        cancel_url: opts.cancelUrl,
       },
       custom_data: opts.customData ?? {},
     };
@@ -52,9 +60,9 @@ export class PaydunyaService {
       const { data } = await firstValueFrom(
         this.http.post(`${baseUrl}/checkout-invoice/create`, payload, {
           headers: {
-            'PAYDUNYA-MASTER-KEY':  masterKey,
+            'PAYDUNYA-MASTER-KEY': masterKey,
             'PAYDUNYA-PRIVATE-KEY': privateKey,
-            'PAYDUNYA-TOKEN':       token,
+            'PAYDUNYA-TOKEN': token,
             'Content-Type': 'application/json',
           },
         }),
@@ -64,14 +72,16 @@ export class PaydunyaService {
 
       if (data.response_code !== '00') {
         this.logger.error('PayDunya error', data);
-        throw new InternalServerErrorException('Erreur lors de la création du paiement');
+        throw new InternalServerErrorException(
+          'Erreur lors de la création du paiement',
+        );
       }
 
       // PayDunya retourne l'URL dans response_text quand response_code === '00'
       const checkoutUrl = data.response_text ?? `${checkoutBase}/${data.token}`;
 
       return {
-        token:       data.token,
+        token: data.token,
         checkoutUrl,
       };
     } catch (err: any) {
@@ -85,18 +95,20 @@ export class PaydunyaService {
   }
 
   async getInvoiceStatus(invoiceToken: string): Promise<string> {
-    const masterKey  = process.env.PAYDUNYA_MASTER_KEY  ?? 'test_master_key';
+    const masterKey = process.env.PAYDUNYA_MASTER_KEY ?? 'test_master_key';
     const privateKey = process.env.PAYDUNYA_PRIVATE_KEY ?? 'test_private_key';
-    const token      = process.env.PAYDUNYA_TOKEN        ?? 'test_token';
-    const isSandbox  = process.env.PAYDUNYA_MODE !== 'live';
-    const baseUrl = isSandbox ? SANDBOX_BASE : 'https://app.paydunya.com/api/v1';
+    const token = process.env.PAYDUNYA_TOKEN ?? 'test_token';
+    const isSandbox = process.env.PAYDUNYA_MODE !== 'live';
+    const baseUrl = isSandbox
+      ? SANDBOX_BASE
+      : 'https://app.paydunya.com/api/v1';
 
     const { data } = await firstValueFrom(
       this.http.get(`${baseUrl}/checkout-invoice/confirm/${invoiceToken}`, {
         headers: {
-          'PAYDUNYA-MASTER-KEY':  masterKey,
+          'PAYDUNYA-MASTER-KEY': masterKey,
           'PAYDUNYA-PRIVATE-KEY': privateKey,
-          'PAYDUNYA-TOKEN':       token,
+          'PAYDUNYA-TOKEN': token,
         },
       }),
     );

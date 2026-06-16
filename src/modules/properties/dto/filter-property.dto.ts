@@ -13,7 +13,9 @@ import { PropertyStatus } from '../../../common/enums/property-status.enum';
 import { PropertyType } from '../../../common/enums/property-type.enum';
 
 export class FilterPropertyDto extends PaginationDto {
-  @ApiPropertyOptional({ description: 'Full-text search on title, description, address and city' })
+  @ApiPropertyOptional({
+    description: 'Full-text search on title, description, address and city',
+  })
   @IsOptional()
   @IsString()
   search?: string;
@@ -72,7 +74,9 @@ export class FilterPropertyDto extends PaginationDto {
   @IsEnum(['ASC', 'DESC'])
   order?: 'ASC' | 'DESC';
 
-  @ApiPropertyOptional({ description: 'Show only featured (Coup de cœur) properties' })
+  @ApiPropertyOptional({
+    description: 'Show only featured (Coup de cœur) properties',
+  })
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()

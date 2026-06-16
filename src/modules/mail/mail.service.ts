@@ -15,7 +15,7 @@ export class MailService {
     } else {
       this.transporter = nodemailer.createTransport({
         host,
-        port:   Number(process.env.SMTP_PORT ?? 587),
+        port: Number(process.env.SMTP_PORT ?? 587),
         secure: process.env.SMTP_SECURE === 'true',
         auth: {
           user: process.env.SMTP_USER,
@@ -73,9 +73,20 @@ export class MailService {
     startDate: Date;
     propertyAddress: string | null;
   }): Promise<void> {
-    const { to, tenantName, agentName, monthlyRent, startDate, propertyAddress } = opts;
+    const {
+      to,
+      tenantName,
+      agentName,
+      monthlyRent,
+      startDate,
+      propertyAddress,
+    } = opts;
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
-    const dateStr = startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dateStr = startDate.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
     const rentStr = new Intl.NumberFormat('fr-FR').format(monthlyRent);
 
     const body = `
@@ -125,7 +136,9 @@ export class MailService {
     });
 
     if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(`[DEV] Email "loyers en retard (${lateCount})" → ${to} | ${info.messageId}`);
+      this.logger.log(
+        `[DEV] Email "loyers en retard (${lateCount})" → ${to} | ${info.messageId}`,
+      );
     }
   }
 
@@ -137,8 +150,16 @@ export class MailService {
   }): Promise<void> {
     const { to, agentFirstName, clientName, date } = opts;
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
-    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const timeStr = date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     const body = `
       ${this.h(`Bonjour ${agentFirstName},`)}
@@ -169,8 +190,16 @@ export class MailService {
   }): Promise<void> {
     const { to, clientFirstName, agentName, date } = opts;
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
-    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const timeStr = date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     const body = `
       ${this.h(`Bonjour ${clientFirstName},`)}
@@ -201,7 +230,11 @@ export class MailService {
     daysLeft: number;
   }): Promise<void> {
     const { to, firstName, planName, expiresAt, daysLeft } = opts;
-    const expiryStr = expiresAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const expiryStr = expiresAt.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
 
     const html = `
@@ -251,14 +284,16 @@ export class MailService {
 </html>`;
 
     const info = await this.transporter.sendMail({
-      from:    `"Prestige Immobilier" <${process.env.SMTP_FROM ?? 'noreply@prestige-immobilier.sn'}>`,
+      from: `"Prestige Immobilier" <${process.env.SMTP_FROM ?? 'noreply@prestige-immobilier.sn'}>`,
       to,
       subject: `⏳ Votre abonnement ${planName} expire dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`,
       html,
     });
 
     if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(`[DEV] Email "expiration J-${daysLeft}" → ${to} | messageId: ${info.messageId}`);
+      this.logger.log(
+        `[DEV] Email "expiration J-${daysLeft}" → ${to} | messageId: ${info.messageId}`,
+      );
     }
   }
 }

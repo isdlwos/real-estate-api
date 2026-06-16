@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../../common/enums/role.enum';
@@ -25,7 +29,10 @@ export class PropertyToursService {
   ): Promise<PropertyTour> {
     await this.checkOwnership(propertyId, userId, userRole);
 
-    const result = await this.cloudinary.upload(file, `prestige-immobilier/tours/${propertyId}`);
+    const result = await this.cloudinary.upload(
+      file,
+      `prestige-immobilier/tours/${propertyId}`,
+    );
 
     return this.tourRepo.save(
       this.tourRepo.create({
@@ -54,7 +61,11 @@ export class PropertyToursService {
     await this.tourRepo.remove(tour);
   }
 
-  private async checkOwnership(propertyId: string, userId: string, userRole: Role): Promise<void> {
+  private async checkOwnership(
+    propertyId: string,
+    userId: string,
+    userRole: Role,
+  ): Promise<void> {
     if (userRole === Role.ADMIN) return;
     const property = await this.propertyRepo.findOneBy({ id: propertyId });
     if (!property) throw new NotFoundException('Property not found');

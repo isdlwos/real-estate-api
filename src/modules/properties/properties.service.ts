@@ -21,22 +21,40 @@ export class PropertiesService {
   constructor(
     @InjectRepository(Property) private propertyRepo: Repository<Property>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
-    @InjectRepository(Subscription) private subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(Subscription)
+    private subscriptionRepo: Repository<Subscription>,
   ) {}
 
-  async getQuotaInfo(userId: string): Promise<{ used: number; limit: number; planName: string; canPublish: boolean; canBoost: boolean; canFeature: boolean }> {
+  async getQuotaInfo(userId: string): Promise<{
+    used: number;
+    limit: number;
+    planName: string;
+    canPublish: boolean;
+    canBoost: boolean;
+    canFeature: boolean;
+  }> {
     const subscription = await this.subscriptionRepo.findOne({
       where: { agentId: userId, status: SubscriptionStatus.ACTIVE },
       relations: { plan: true },
     });
 
     if (!subscription) {
-      return { used: 0, limit: 0, planName: 'Aucun', canPublish: false, canBoost: false, canFeature: false };
+      return {
+        used: 0,
+        limit: 0,
+        planName: 'Aucun',
+        canPublish: false,
+        canBoost: false,
+        canFeature: false,
+      };
     }
 
     const agent = await this.agentRepo.findOneBy({ userId });
     const used = agent
-      ? await this.propertyRepo.countBy({ agentId: agent.id, status: PropertyStatus.AVAILABLE })
+      ? await this.propertyRepo.countBy({
+          agentId: agent.id,
+          status: PropertyStatus.AVAILABLE,
+        })
       : 0;
 
     const limit = subscription.plan.maxListings;
@@ -64,7 +82,11 @@ export class PropertiesService {
     }
   }
 
-  async create(dto: CreatePropertyDto, userId: string, userRole: Role): Promise<Property> {
+  async create(
+    dto: CreatePropertyDto,
+    userId: string,
+    userRole: Role,
+  ): Promise<Property> {
     let agentId: string | undefined = undefined;
 
     if (userRole === Role.AGENT) {
@@ -73,11 +95,17 @@ export class PropertiesService {
       agentId = agent.id;
     }
 
-    const property = this.propertyRepo.create({ ...dto, agentId, status: PropertyStatus.DRAFT });
+    const property = this.propertyRepo.create({
+      ...dto,
+      agentId,
+      status: PropertyStatus.DRAFT,
+    });
     return this.propertyRepo.save(property);
   }
 
-  async findAll(filters: FilterPropertyDto): Promise<PaginatedResponse<Property>> {
+  async findAll(
+    filters: FilterPropertyDto,
+  ): Promise<PaginatedResponse<Property>> {
     const qb = this.propertyRepo
       .createQueryBuilder('property')
       .leftJoinAndSelect('property.images', 'images')
@@ -92,20 +120,43 @@ export class PropertiesService {
       );
     }
 
-    if (filters.type) qb.andWhere('property.type = :type', { type: filters.type });
-    if (filters.category) qb.andWhere('property.category = :category', { category: filters.category });
-    if (filters.status) qb.andWhere('property.status = :status', { status: filters.status });
-    if (filters.city) qb.andWhere('LOWER(property.city) LIKE LOWER(:city)', { city: `%${filters.city}%` });
-    if (filters.minPrice != null) qb.andWhere('property.price >= :minPrice', { minPrice: filters.minPrice });
-    if (filters.maxPrice != null) qb.andWhere('property.price <= :maxPrice', { maxPrice: filters.maxPrice });
-    if (filters.minRooms != null) qb.andWhere('property.rooms >= :minRooms', { minRooms: filters.minRooms });
-    if (filters.minSurface != null) qb.andWhere('property.surface >= :minSurface', { minSurface: filters.minSurface });
-    if (filters.featured === true) qb.andWhere('property.featuredUntil > NOW()');
+    if (filters.type)
+      qb.andWhere('property.type = :type', { type: filters.type });
+    if (filters.category)
+      qb.andWhere('property.category = :category', {
+        category: filters.category,
+      });
+    if (filters.status)
+      qb.andWhere('property.status = :status', { status: filters.status });
+    if (filters.city)
+      qb.andWhere('LOWER(property.city) LIKE LOWER(:city)', {
+        city: `%${filters.city}%`,
+      });
+    if (filters.minPrice != null)
+      qb.andWhere('property.price >= :minPrice', {
+        minPrice: filters.minPrice,
+      });
+    if (filters.maxPrice != null)
+      qb.andWhere('property.price <= :maxPrice', {
+        maxPrice: filters.maxPrice,
+      });
+    if (filters.minRooms != null)
+      qb.andWhere('property.rooms >= :minRooms', {
+        minRooms: filters.minRooms,
+      });
+    if (filters.minSurface != null)
+      qb.andWhere('property.surface >= :minSurface', {
+        minSurface: filters.minSurface,
+      });
+    if (filters.featured === true)
+      qb.andWhere('property.featuredUntil > NOW()');
 
     const sortField = filters.sortBy || 'createdAt';
     const order = filters.order || 'DESC';
-    qb.orderBy('property.boostedUntil', 'DESC', 'NULLS LAST')
-      .addOrderBy(`property.${sortField}`, order);
+    qb.orderBy('property.boostedUntil', 'DESC', 'NULLS LAST').addOrderBy(
+      `property.${sortField}`,
+      order,
+    );
 
     const page = filters.page || 1;
     const limit = filters.limit || 20;
@@ -156,7 +207,8 @@ export class PropertiesService {
     const qb = this.propertyRepo.createQueryBuilder('p');
 
     const [byCity, byCategory, byType, priceRange] = await Promise.all([
-      qb.clone()
+      qb
+        .clone()
         .select('p.city', 'city')
         .addSelect('COUNT(*)', 'count')
         .where('p.status = :status', { status: 'available' })
@@ -164,21 +216,24 @@ export class PropertiesService {
         .orderBy('count', 'DESC')
         .getRawMany<{ city: string; count: string }>(),
 
-      qb.clone()
+      qb
+        .clone()
         .select('p.category', 'category')
         .addSelect('COUNT(*)', 'count')
         .where('p.status = :status', { status: 'available' })
         .groupBy('p.category')
         .getRawMany<{ category: string; count: string }>(),
 
-      qb.clone()
+      qb
+        .clone()
         .select('p.type', 'type')
         .addSelect('COUNT(*)', 'count')
         .where('p.status = :status', { status: 'available' })
         .groupBy('p.type')
         .getRawMany<{ type: string; count: string }>(),
 
-      qb.clone()
+      qb
+        .clone()
         .select('MIN(p.price)', 'min')
         .addSelect('MAX(p.price)', 'max')
         .addSelect('ROUND(AVG(p.price)::numeric, 2)', 'avg')
@@ -189,7 +244,10 @@ export class PropertiesService {
 
     return {
       byCity: byCity.map((r) => ({ city: r.city, count: Number(r.count) })),
-      byCategory: byCategory.map((r) => ({ category: r.category, count: Number(r.count) })),
+      byCategory: byCategory.map((r) => ({
+        category: r.category,
+        count: Number(r.count),
+      })),
       byType: byType.map((r) => ({ type: r.type, count: Number(r.count) })),
       price: {
         min: Number(priceRange?.min ?? 0),
@@ -237,7 +295,10 @@ export class PropertiesService {
       .createQueryBuilder()
       .update(Property)
       .set({ viewCount: () => '"viewCount" + 1' })
-      .where('id = :id AND status = :status', { id, status: PropertyStatus.AVAILABLE })
+      .where('id = :id AND status = :status', {
+        id,
+        status: PropertyStatus.AVAILABLE,
+      })
       .execute();
   }
 
@@ -246,14 +307,22 @@ export class PropertiesService {
       .createQueryBuilder()
       .update(Property)
       .set({ contactCount: () => '"contactCount" + 1' })
-      .where('id = :id AND status = :status', { id, status: PropertyStatus.AVAILABLE })
+      .where('id = :id AND status = :status', {
+        id,
+        status: PropertyStatus.AVAILABLE,
+      })
       .execute();
   }
 
   async getAgentStats(userId: string): Promise<{
     totalViews: number;
     totalContacts: number;
-    properties: { id: string; title: string; viewCount: number; contactCount: number }[];
+    properties: {
+      id: string;
+      title: string;
+      viewCount: number;
+      contactCount: number;
+    }[];
   }> {
     const agent = await this.agentRepo.findOneBy({ userId });
     if (!agent) return { totalViews: 0, totalContacts: 0, properties: [] };
@@ -264,13 +333,21 @@ export class PropertiesService {
       order: { viewCount: 'DESC' },
     });
 
-    const totalViews    = props.reduce((sum, p) => sum + (p.viewCount    ?? 0), 0);
-    const totalContacts = props.reduce((sum, p) => sum + (p.contactCount ?? 0), 0);
+    const totalViews = props.reduce((sum, p) => sum + (p.viewCount ?? 0), 0);
+    const totalContacts = props.reduce(
+      (sum, p) => sum + (p.contactCount ?? 0),
+      0,
+    );
 
     return { totalViews, totalContacts, properties: props };
   }
 
-  async boost(id: string, weeks: number, userId: string, userRole: Role): Promise<Property> {
+  async boost(
+    id: string,
+    weeks: number,
+    userId: string,
+    userRole: Role,
+  ): Promise<Property> {
     const property = await this.findOne(id);
     await this.checkOwnership(property, userId, userRole);
 
@@ -280,7 +357,9 @@ export class PropertiesService {
         relations: { plan: true },
       });
       if (!subscription?.plan.canBoost) {
-        throw new ForbiddenException('La mise en avant "Boost" est réservée aux formules Pro et Agence.');
+        throw new ForbiddenException(
+          'La mise en avant "Boost" est réservée aux formules Pro et Agence.',
+        );
       }
     }
 
@@ -290,7 +369,12 @@ export class PropertiesService {
     return this.propertyRepo.save(property);
   }
 
-  async feature(id: string, months: number, userId: string, userRole: Role): Promise<Property> {
+  async feature(
+    id: string,
+    months: number,
+    userId: string,
+    userRole: Role,
+  ): Promise<Property> {
     const property = await this.findOne(id);
     await this.checkOwnership(property, userId, userRole);
 
@@ -300,7 +384,9 @@ export class PropertiesService {
         relations: { plan: true },
       });
       if (!subscription?.plan.canFeature) {
-        throw new ForbiddenException('Le "Coup de cœur" est réservé à la formule Agence.');
+        throw new ForbiddenException(
+          'Le "Coup de cœur" est réservé à la formule Agence.',
+        );
       }
     }
 
@@ -310,7 +396,11 @@ export class PropertiesService {
     return this.propertyRepo.save(property);
   }
 
-  private async checkOwnership(property: Property, userId: string, userRole: Role): Promise<void> {
+  private async checkOwnership(
+    property: Property,
+    userId: string,
+    userRole: Role,
+  ): Promise<void> {
     if (userRole === Role.ADMIN) return;
     const agent = await this.agentRepo.findOneBy({ userId });
     if (!agent || property.agentId !== agent.id) {

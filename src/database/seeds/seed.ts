@@ -54,22 +54,48 @@ async function seed() {
 
   // Plans d'abonnement
   const plans = [
-    { name: 'Starter', slug: 'starter', price: 15000, maxListings: 5,  canBoost: false, canFeature: false },
-    { name: 'Pro',     slug: 'pro',     price: 35000, maxListings: 20, canBoost: true,  canFeature: false },
-    { name: 'Agence',  slug: 'agency',  price: 75000, maxListings: -1, canBoost: true,  canFeature: true  },
+    {
+      name: 'Starter',
+      slug: 'starter',
+      price: 15000,
+      maxListings: 5,
+      canBoost: false,
+      canFeature: false,
+    },
+    {
+      name: 'Pro',
+      slug: 'pro',
+      price: 35000,
+      maxListings: 20,
+      canBoost: true,
+      canFeature: false,
+    },
+    {
+      name: 'Agence',
+      slug: 'agency',
+      price: 75000,
+      maxListings: -1,
+      canBoost: true,
+      canFeature: true,
+    },
   ];
   for (const p of plans) {
     const exists = await planRepo.findOneBy({ slug: p.slug });
     if (!exists) {
       await planRepo.save(planRepo.create(p));
     } else {
-      await planRepo.update({ slug: p.slug }, { canBoost: p.canBoost, canFeature: p.canFeature });
+      await planRepo.update(
+        { slug: p.slug },
+        { canBoost: p.canBoost, canFeature: p.canFeature },
+      );
     }
   }
-  console.log('✅ Plans d\'abonnement créés/mis à jour');
+  console.log("✅ Plans d'abonnement créés/mis à jour");
 
   // Admin
-  let admin = await userRepo.findOneBy({ email: 'admin@prestige-immobilier.sn' });
+  let admin = await userRepo.findOneBy({
+    email: 'admin@prestige-immobilier.sn',
+  });
   if (!admin) {
     admin = await userRepo.save(
       userRepo.create({
@@ -85,9 +111,21 @@ async function seed() {
 
   // Agents
   const agentData = [
-    { email: 'aminata.diallo@prestige-immobilier.sn', firstName: 'Aminata', lastName: 'Diallo' },
-    { email: 'moussa.ndiaye@prestige-immobilier.sn', firstName: 'Moussa', lastName: 'Ndiaye' },
-    { email: 'fatou.sow@prestige-immobilier.sn', firstName: 'Fatou', lastName: 'Sow' },
+    {
+      email: 'aminata.diallo@prestige-immobilier.sn',
+      firstName: 'Aminata',
+      lastName: 'Diallo',
+    },
+    {
+      email: 'moussa.ndiaye@prestige-immobilier.sn',
+      firstName: 'Moussa',
+      lastName: 'Ndiaye',
+    },
+    {
+      email: 'fatou.sow@prestige-immobilier.sn',
+      firstName: 'Fatou',
+      lastName: 'Sow',
+    },
   ];
 
   const agents: Agent[] = [];
@@ -136,16 +174,49 @@ async function seed() {
   }
 
   // Properties
-  const cities = ['Dakar', 'Saint-Louis', 'Thiès', 'Ziguinchor', 'Kaolack', 'Mbour', 'Touba', 'Diourbel', 'Tambacounda', 'Saly'];
+  const cities = [
+    'Dakar',
+    'Saint-Louis',
+    'Thiès',
+    'Ziguinchor',
+    'Kaolack',
+    'Mbour',
+    'Touba',
+    'Diourbel',
+    'Tambacounda',
+    'Saly',
+  ];
   const zipCodes: Record<string, string> = {
-    'Dakar': '10000', 'Saint-Louis': '46000', 'Thiès': '21000',
-    'Ziguinchor': '26000', 'Kaolack': '18000', 'Mbour': '23000',
-    'Touba': '93000', 'Diourbel': '16000', 'Tambacounda': '51000', 'Saly': '23500',
+    Dakar: '10000',
+    'Saint-Louis': '46000',
+    Thiès: '21000',
+    Ziguinchor: '26000',
+    Kaolack: '18000',
+    Mbour: '23000',
+    Touba: '93000',
+    Diourbel: '16000',
+    Tambacounda: '51000',
+    Saly: '23500',
   };
-  const streetPrefixes = ['Rue', 'Avenue', 'Boulevard', 'Allée', 'Cité', 'Villa'];
+  const streetPrefixes = [
+    'Rue',
+    'Avenue',
+    'Boulevard',
+    'Allée',
+    'Cité',
+    'Villa',
+  ];
   const streetNames = [
-    'Léopold Sédar Senghor', 'Cheikh Anta Diop', 'Blaise Diagne', 'El Hadj Malick Sy',
-    'Lat Dior', 'Mamadou Dia', 'de la Corniche', 'du Port', 'des Almadies', 'Serigne Touba',
+    'Léopold Sédar Senghor',
+    'Cheikh Anta Diop',
+    'Blaise Diagne',
+    'El Hadj Malick Sy',
+    'Lat Dior',
+    'Mamadou Dia',
+    'de la Corniche',
+    'du Port',
+    'des Almadies',
+    'Serigne Touba',
   ];
   const categories = Object.values(PropertyCategory);
   const types = Object.values(PropertyType);
@@ -206,7 +277,9 @@ async function seed() {
     for (const property of propertiesWithoutImages) {
       await seedImagesForProperty(property, propertyImageRepo);
     }
-    console.log(`✅ Images ajoutées à ${propertiesWithoutImages.length} propriétés existantes`);
+    console.log(
+      `✅ Images ajoutées à ${propertiesWithoutImages.length} propriétés existantes`,
+    );
   }
 
   // Appointments
@@ -245,11 +318,16 @@ async function seedImagesForProperty(
   property: Property,
   imageRepo: import('typeorm').Repository<PropertyImage>,
 ) {
-  const pool = IMAGES_BY_CATEGORY[property.category] ?? IMAGES_BY_CATEGORY['house'];
+  const pool =
+    IMAGES_BY_CATEGORY[property.category] ?? IMAGES_BY_CATEGORY['house'];
   const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 2);
   for (let idx = 0; idx < shuffled.length; idx++) {
     await imageRepo.save(
-      imageRepo.create({ propertyId: property.id, url: shuffled[idx], isPrimary: idx === 0 }),
+      imageRepo.create({
+        propertyId: property.id,
+        url: shuffled[idx],
+        isPrimary: idx === 0,
+      }),
     );
   }
 }

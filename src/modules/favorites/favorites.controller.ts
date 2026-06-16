@@ -7,11 +7,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { FavoritesService } from './favorites.service';
@@ -50,11 +46,17 @@ export class FavoritesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List own favorites with property details (paginated)' })
+  @ApiOperation({
+    summary: 'List own favorites with property details (paginated)',
+  })
   findAll(
     @CurrentUser('id') userId: string,
     @Query() pagination: PaginationDto,
   ) {
-    return this.favoritesService.findAll(userId, pagination.page, pagination.limit);
+    return this.favoritesService.findAll(
+      userId,
+      pagination.page,
+      pagination.limit,
+    );
   }
 }

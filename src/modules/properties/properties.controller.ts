@@ -11,11 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -40,14 +36,19 @@ export class PropertiesController {
 
   @Public()
   @Get('stats')
-  @ApiOperation({ summary: 'Aggregated stats for homepage filters (counts by city/category/type, price range)' })
+  @ApiOperation({
+    summary:
+      'Aggregated stats for homepage filters (counts by city/category/type, price range)',
+  })
   getStats() {
     return this.propertiesService.getStats();
   }
 
   @Public()
   @Get('cities')
-  @ApiOperation({ summary: 'List cities that have available properties, sorted by count' })
+  @ApiOperation({
+    summary: 'List cities that have available properties, sorted by count',
+  })
   getCities() {
     return this.propertiesService.getCities();
   }
@@ -61,7 +62,9 @@ export class PropertiesController {
 
   @Public()
   @Get(':id/similar')
-  @ApiOperation({ summary: 'Get similar properties (same category/type, ±30% price)' })
+  @ApiOperation({
+    summary: 'Get similar properties (same category/type, ±30% price)',
+  })
   findSimilar(@Param('id', ParseUUIDPipe) id: string) {
     return this.propertiesService.findSimilar(id);
   }
@@ -94,7 +97,9 @@ export class PropertiesController {
   @Patch(':id/boost')
   @Roles(Role.AGENT, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Boost a property to top of results (agent: own only, admin: any)' })
+  @ApiOperation({
+    summary: 'Boost a property to top of results (agent: own only, admin: any)',
+  })
   boost(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { weeks?: number },
@@ -107,14 +112,22 @@ export class PropertiesController {
   @Patch(':id/feature')
   @Roles(Role.AGENT, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Mark a property as featured / Coup de cœur (agent: own only, admin: any)' })
+  @ApiOperation({
+    summary:
+      'Mark a property as featured / Coup de cœur (agent: own only, admin: any)',
+  })
   feature(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { months?: number },
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {
-    return this.propertiesService.feature(id, body.months ?? 1, userId, userRole);
+    return this.propertiesService.feature(
+      id,
+      body.months ?? 1,
+      userId,
+      userRole,
+    );
   }
 
   @Delete(':id')

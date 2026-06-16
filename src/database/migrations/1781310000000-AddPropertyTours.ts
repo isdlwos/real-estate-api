@@ -15,7 +15,9 @@ export class AddPropertyTours1781310000000 implements MigrationInterface {
           FOREIGN KEY ("propertyId") REFERENCES "properties"("id") ON DELETE CASCADE
       )
     `);
-    await queryRunner.query(`CREATE INDEX "IDX_property_tours_propertyId" ON "property_tours" ("propertyId")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_property_tours_propertyId" ON "property_tours" ("propertyId")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

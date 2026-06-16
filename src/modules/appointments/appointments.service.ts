@@ -20,13 +20,17 @@ import { Appointment } from './entities/appointment.entity';
 @Injectable()
 export class AppointmentsService {
   constructor(
-    @InjectRepository(Appointment) private appointmentRepo: Repository<Appointment>,
+    @InjectRepository(Appointment)
+    private appointmentRepo: Repository<Appointment>,
     @InjectRepository(Agent) private agentRepo: Repository<Agent>,
     @InjectRepository(User) private userRepo: Repository<User>,
     private mailService: MailService,
   ) {}
 
-  async create(dto: CreateAppointmentDto, clientId: string): Promise<Appointment> {
+  async create(
+    dto: CreateAppointmentDto,
+    clientId: string,
+  ): Promise<Appointment> {
     await this.checkDoubleBooking(dto.agentId, dto.date);
 
     const appointment = this.appointmentRepo.create({ ...dto, clientId });
@@ -35,7 +39,12 @@ export class AppointmentsService {
     return saved;
   }
 
-  async findAll(userId: string, userRole: Role, page = 1, limit = 20): Promise<PaginatedResponse<Appointment>> {
+  async findAll(
+    userId: string,
+    userRole: Role,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<Appointment>> {
     const qb = this.appointmentRepo
       .createQueryBuilder('appt')
       .leftJoinAndSelect('appt.property', 'property')
@@ -58,7 +67,11 @@ export class AppointmentsService {
     return new PaginatedResponse(data, total, page, limit);
   }
 
-  async findOne(id: string, userId: string, userRole: Role): Promise<Appointment> {
+  async findOne(
+    id: string,
+    userId: string,
+    userRole: Role,
+  ): Promise<Appointment> {
     const appointment = await this.appointmentRepo.findOne({
       where: { id },
       relations: { property: true, agent: { user: true }, client: true },
@@ -66,9 +79,10 @@ export class AppointmentsService {
     if (!appointment) throw new NotFoundException('Appointment not found');
 
     if (userRole !== Role.ADMIN) {
-      const agent = userRole === Role.AGENT
-        ? await this.agentRepo.findOneBy({ userId })
-        : null;
+      const agent =
+        userRole === Role.AGENT
+          ? await this.agentRepo.findOneBy({ userId })
+          : null;
 
       const isOwner =
         appointment.clientId === userId ||
@@ -92,7 +106,9 @@ export class AppointmentsService {
     if (userRole !== Role.ADMIN) {
       const agent = await this.agentRepo.findOneBy({ userId });
       if (!agent || appointment.agentId !== agent.id) {
-        throw new ForbiddenException('Only the assigned agent can update appointment status');
+        throw new ForbiddenException(
+          'Only the assigned agent can update appointment status',
+        );
       }
     }
 
@@ -116,7 +132,9 @@ export class AppointmentsService {
     if (userRole !== Role.ADMIN) {
       if (appointment.clientId !== userId) throw new ForbiddenException();
       if (appointment.status !== AppointmentStatus.PENDING) {
-        throw new BadRequestException('Only pending appointments can be rescheduled');
+        throw new BadRequestException(
+          'Only pending appointments can be rescheduled',
+        );
       }
     }
 
@@ -137,37 +155,54 @@ export class AppointmentsService {
         appointment.clientId !== userId ||
         appointment.status !== AppointmentStatus.PENDING
       ) {
-        throw new ForbiddenException('Clients can only cancel their own pending appointments');
+        throw new ForbiddenException(
+          'Clients can only cancel their own pending appointments',
+        );
       }
     }
 
     await this.appointmentRepo.remove(appointment);
   }
 
-  private async notifyAgentNewAppointment(appointment: Appointment, clientId: string): Promise<void> {
+  private async notifyAgentNewAppointment(
+    appointment: Appointment,
+    clientId: string,
+  ): Promise<void> {
     const [agent, client] = await Promise.all([
-      this.agentRepo.findOne({ where: { id: appointment.agentId }, relations: { user: true } }),
+      this.agentRepo.findOne({
+        where: { id: appointment.agentId },
+        relations: { user: true },
+      }),
       this.userRepo.findOneBy({ id: clientId }),
     ]);
     if (!agent?.user?.email) return;
     await this.mailService.sendNewAppointment({
       to: agent.user.email,
       agentFirstName: agent.user.firstName,
-      clientName: client ? `${client.firstName} ${client.lastName}` : 'Un client',
+      clientName: client
+        ? `${client.firstName} ${client.lastName}`
+        : 'Un client',
       date: appointment.date,
     });
   }
 
-  private async notifyClientConfirmation(appointment: Appointment): Promise<void> {
+  private async notifyClientConfirmation(
+    appointment: Appointment,
+  ): Promise<void> {
     const [client, agent] = await Promise.all([
       this.userRepo.findOneBy({ id: appointment.clientId }),
-      this.agentRepo.findOne({ where: { id: appointment.agentId }, relations: { user: true } }),
+      this.agentRepo.findOne({
+        where: { id: appointment.agentId },
+        relations: { user: true },
+      }),
     ]);
     if (!client?.email) return;
     await this.mailService.sendAppointmentConfirmed({
       to: client.email,
       clientFirstName: client.firstName,
-      agentName: agent?.user ? `${agent.user.firstName} ${agent.user.lastName}` : 'Votre agent',
+      agentName: agent?.user
+        ? `${agent.user.firstName} ${agent.user.lastName}`
+        : 'Votre agent',
       date: appointment.date,
     });
   }
@@ -185,7 +220,9 @@ export class AppointmentsService {
     });
 
     if (conflict) {
-      throw new BadRequestException('Agent already has a confirmed appointment in this time window');
+      throw new BadRequestException(
+        'Agent already has a confirmed appointment in this time window',
+      );
     }
   }
 }

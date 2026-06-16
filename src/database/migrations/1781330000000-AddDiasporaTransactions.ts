@@ -26,7 +26,9 @@ export class AddDiasporaTransactions1781330000000 implements MigrationInterface 
           FOREIGN KEY ("propertyId") REFERENCES "properties"("id") ON DELETE SET NULL
       )
     `);
-    await queryRunner.query(`CREATE INDEX "IDX_diaspora_tx_agentId" ON "diaspora_transactions" ("agentId")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_diaspora_tx_agentId" ON "diaspora_transactions" ("agentId")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

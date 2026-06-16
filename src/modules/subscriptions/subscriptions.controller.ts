@@ -1,5 +1,12 @@
 import {
-  Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Req,
 } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { PropertiesService } from '../properties/properties.service';
@@ -44,7 +51,11 @@ export class SubscriptionsController {
     @Req() req: Request,
   ) {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    return this.subscriptionsService.createCheckout(agentId, dto.planSlug, baseUrl);
+    return this.subscriptionsService.createCheckout(
+      agentId,
+      dto.planSlug,
+      baseUrl,
+    );
   }
 
   @Roles(Role.AGENT, Role.ADMIN)

@@ -8,6 +8,8 @@ export class AddLeaseAutoRenew1781360000000 implements MigrationInterface {
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "rental_leases" DROP COLUMN IF EXISTS "autoRenew"`);
+    await queryRunner.query(
+      `ALTER TABLE "rental_leases" DROP COLUMN IF EXISTS "autoRenew"`,
+    );
   }
 }

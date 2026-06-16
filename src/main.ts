@@ -36,18 +36,20 @@ async function bootstrap() {
 
   if (process.env.NODE_ENV !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-    .setTitle('Real Estate API')
-    .setDescription('API REST pour une agence immobilière — NestJS + PostgreSQL')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+      .setTitle('Real Estate API')
+      .setDescription(
+        'API REST pour une agence immobilière — NestJS + PostgreSQL',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
 
-  const app2 = app.getHttpAdapter().getInstance();
-  app2.get('/api/redoc', (_req: Request, res: Response) => {
-    res.send(`<!DOCTYPE html>
+    const app2 = app.getHttpAdapter().getInstance();
+    app2.get('/api/redoc', (_req: Request, res: Response) => {
+      res.send(`<!DOCTYPE html>
 <html lang="fr">
   <head>
     <title>Real Estate API — Documentation</title>
@@ -162,7 +164,7 @@ async function bootstrap() {
     </script>
   </body>
 </html>`);
-  });
+    });
   } // end if (NODE_ENV !== 'production')
 
   const port = process.env.PORT || 3000;

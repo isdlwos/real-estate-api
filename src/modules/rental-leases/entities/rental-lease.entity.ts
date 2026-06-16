@@ -1,6 +1,12 @@
 import {
-  Column, CreateDateColumn, Entity, ManyToOne, JoinColumn,
-  OneToMany, PrimaryGeneratedColumn, UpdateDateColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Agent } from '../../users/entities/agent.entity';
 import { Property } from '../../properties/entities/property.entity';

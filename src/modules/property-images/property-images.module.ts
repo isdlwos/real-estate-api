@@ -8,7 +8,10 @@ import { PropertyImagesController } from './property-images.controller';
 import { PropertyImagesService } from './property-images.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PropertyImage, Property, Agent]), CloudinaryModule],
+  imports: [
+    TypeOrmModule.forFeature([PropertyImage, Property, Agent]),
+    CloudinaryModule,
+  ],
   controllers: [PropertyImagesController],
   providers: [PropertyImagesService],
 })

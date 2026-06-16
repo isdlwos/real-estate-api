@@ -38,7 +38,12 @@ export class PropertyImagesController {
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {
-    return this.propertyImagesService.uploadImages(propertyId, files, userId, userRole);
+    return this.propertyImagesService.uploadImages(
+      propertyId,
+      files,
+      userId,
+      userRole,
+    );
   }
 
   @Patch('property-images/:id/primary')

@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -28,7 +38,12 @@ export class DiasporaTransactionsController {
     @CurrentUser('role') userRole: Role,
     @Query() pagination: PaginationDto,
   ) {
-    return this.service.findAll(userId, userRole, pagination.page, pagination.limit);
+    return this.service.findAll(
+      userId,
+      userRole,
+      pagination.page,
+      pagination.limit,
+    );
   }
 
   @Get(':id')
