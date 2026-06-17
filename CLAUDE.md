@@ -165,3 +165,23 @@ All filenames are **kebab-case**.
 - `Update<Name>Dto` — extends `PartialType(Create<Name>Dto)` to make all fields optional.
 - Filter/query DTOs extend `PaginationDto` and are used exclusively as `@Query()` params.
 - Every DTO property must have at least one `class-validator` decorator and one `@ApiProperty` / `@ApiPropertyOptional` decorator.
+- **Never use inline `@Body() body: { field: type }` for route parameters** — always create a dedicated DTO with `class-validator` constraints. This applies even for simple one-field bodies (e.g. `weeks`, `months`, `notes`). Example:
+
+```ts
+// ❌ Bad — no validation, any value accepted
+@Patch(':id/boost')
+boost(@Body() body: { weeks?: number }) { ... }
+
+// ✅ Good — validated DTO
+@Patch(':id/boost')
+boost(@Body() body: BoostPropertyDto) { ... }
+
+// boost-property.dto.ts
+export class BoostPropertyDto {
+  @ApiPropertyOptional({ example: 1, default: 1 })
+  @IsOptional() @IsInt() @Min(1) @Max(12) @Type(() => Number)
+  weeks?: number;
+}
+```
+
+- Use `@Type(() => Number)` with `class-transformer` on numeric fields so the global `ValidationPipe` (with `transform: true`) coerces string inputs correctly.

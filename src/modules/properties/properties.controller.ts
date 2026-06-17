@@ -16,7 +16,9 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
+import { BoostPropertyDto } from './dto/boost-property.dto';
 import { CreatePropertyDto } from './dto/create-property.dto';
+import { FeaturePropertyDto } from './dto/feature-property.dto';
 import { FilterPropertyDto } from './dto/filter-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import { Throttle } from '@nestjs/throttler';
@@ -102,7 +104,7 @@ export class PropertiesController {
   })
   boost(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { weeks?: number },
+    @Body() body: BoostPropertyDto,
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {
@@ -118,7 +120,7 @@ export class PropertiesController {
   })
   feature(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { months?: number },
+    @Body() body: FeaturePropertyDto,
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {

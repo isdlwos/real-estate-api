@@ -17,7 +17,9 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
 import { CreateLeaseDto } from './dto/create-lease.dto';
+import { ExtendLeaseDto } from './dto/extend-lease.dto';
 import { SetAutoRenewDto } from './dto/set-auto-renew.dto';
+import { UpdateLeaseNotesDto } from './dto/update-lease-notes.dto';
 import { RentalLeasesService } from './rental-leases.service';
 
 @ApiTags('Rental Leases')
@@ -107,7 +109,7 @@ export class RentalLeasesController {
   @ApiOperation({ summary: 'Update lease notes / exit report' })
   updateNotes(
     @Param('id') id: string,
-    @Body() body: { notes?: string; exitNotes?: string; entryNotes?: string },
+    @Body() body: UpdateLeaseNotesDto,
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {
@@ -142,7 +144,7 @@ export class RentalLeasesController {
   @ApiOperation({ summary: 'Extend a lease by N months' })
   extend(
     @Param('id') id: string,
-    @Body() body: { months: number },
+    @Body() body: ExtendLeaseDto,
     @CurrentUser('id') userId: string,
     @CurrentUser('role') userRole: Role,
   ) {
