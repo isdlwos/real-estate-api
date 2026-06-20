@@ -143,7 +143,9 @@ export class AppointmentsService {
     appointment.date = dto.date;
     if (dto.notes !== undefined) appointment.notes = dto.notes;
     appointment.status = AppointmentStatus.PENDING;
-    return this.appointmentRepo.save(appointment);
+    const saved = await this.appointmentRepo.save(appointment);
+    this.notifyAgentRescheduled(saved).catch(() => {});
+    return saved;
   }
 
   async remove(id: string, userId: string, userRole: Role): Promise<void> {
@@ -161,6 +163,7 @@ export class AppointmentsService {
       }
     }
 
+    this.notifyAgentCancelled(appointment).catch(() => {});
     await this.appointmentRepo.remove(appointment);
   }
 
@@ -204,6 +207,33 @@ export class AppointmentsService {
         ? `${agent.user.firstName} ${agent.user.lastName}`
         : 'Votre agent',
       date: appointment.date,
+    });
+  }
+
+  private async notifyAgentRescheduled(appointment: Appointment): Promise<void> {
+    const agent = await this.agentRepo.findOne({
+      where: { id: appointment.agentId },
+      relations: { user: true },
+    });
+    if (!agent?.user?.email) return;
+    await this.mailService.sendAppointmentRescheduled({
+      to: agent.user.email,
+      recipientName: agent.user.firstName,
+      newDate: appointment.date,
+    });
+  }
+
+  private async notifyAgentCancelled(appointment: Appointment): Promise<void> {
+    const agent = await this.agentRepo.findOne({
+      where: { id: appointment.agentId },
+      relations: { user: true },
+    });
+    if (!agent?.user?.email) return;
+    await this.mailService.sendAppointmentCancelled({
+      to: agent.user.email,
+      recipientName: agent.user.firstName,
+      date: appointment.date,
+      cancelledBy: 'client',
     });
   }
 

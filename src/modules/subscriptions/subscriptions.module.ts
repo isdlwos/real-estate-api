@@ -6,6 +6,7 @@ import { Subscription } from './entities/subscription.entity';
 import { Payment } from './entities/payment.entity';
 import { Property } from '../properties/entities/property.entity';
 import { Agent } from '../users/entities/agent.entity';
+import { User } from '../users/entities/user.entity';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsTask } from './subscriptions.task';
@@ -14,7 +15,7 @@ import { PropertiesModule } from '../properties/properties.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Plan, Subscription, Payment, Property, Agent]),
+    TypeOrmModule.forFeature([Plan, Subscription, Payment, Property, Agent, User]),
     HttpModule,
     PropertiesModule,
   ],

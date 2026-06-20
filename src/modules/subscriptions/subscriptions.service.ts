@@ -13,6 +13,9 @@ import {
 } from './entities/subscription.entity';
 import { Payment, PaymentStatus } from './entities/payment.entity';
 import { PaydunyaService } from './paydunya.service';
+import { MailService } from '../mail/mail.service';
+import { Agent } from '../users/entities/agent.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -28,7 +31,14 @@ export class SubscriptionsService {
     @InjectRepository(Payment)
     private paymentRepo: Repository<Payment>,
 
+    @InjectRepository(Agent)
+    private agentRepo: Repository<Agent>,
+
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+
     private paydunyaService: PaydunyaService,
+    private mailService: MailService,
   ) {}
 
   async getPlans(): Promise<Plan[]> {
@@ -143,6 +153,20 @@ export class SubscriptionsService {
     this.logger.log(
       `Abonnement activé: ${subscription.id} (agent: ${subscription.agentId})`,
     );
+
+    // Email de confirmation d'activation
+    void this.notifySubscriptionActivated(subscription.agentId, subscription.plan?.name ?? 'Premium', expiresAt);
+  }
+
+  private async notifySubscriptionActivated(agentId: string, planName: string, expiresAt: Date): Promise<void> {
+    const agent = await this.agentRepo.findOne({ where: { id: agentId }, relations: { user: true } });
+    if (!agent?.user?.email) return;
+    await this.mailService.sendSubscriptionActivated({
+      to: agent.user.email,
+      firstName: agent.user.firstName,
+      planName,
+      expiresAt,
+    });
   }
 
   async confirmPayment(subscriptionId: string, agentId: string) {

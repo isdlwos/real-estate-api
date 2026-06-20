@@ -13,7 +13,19 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
+          styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+          fontSrc: ["'self'", 'https:', 'data:'],
+          scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+        },
+      },
+    }),
+  );
 
   app.setGlobalPrefix('api/v1');
 

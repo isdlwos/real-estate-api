@@ -1,69 +1,183 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import Mailjet from 'node-mailjet';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter: nodemailer.Transporter;
+  private readonly mj: InstanceType<typeof Mailjet> | null;
+  private readonly from: { Email: string; Name: string };
+  private readonly frontendUrl: string;
+  private readonly logoUrl: string;
 
   constructor() {
-    const host = process.env.SMTP_HOST;
+    const apiKey = process.env.MAILJET_API_KEY;
+    const apiSecret = process.env.MAILJET_API_SECRET;
 
-    if (!host || process.env.NODE_ENV !== 'production') {
-      // Mode dev : logs console uniquement
-      this.transporter = nodemailer.createTransport({ jsonTransport: true });
+    this.from = {
+      Email: process.env.MAIL_FROM_EMAIL ?? 'noreply@prestige-immobilier.sn',
+      Name: process.env.MAIL_FROM_NAME ?? 'Prestige Immobilier',
+    };
+    this.frontendUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? process.env.FRONTEND_URL ?? 'http://localhost:3002';
+    this.logoUrl =
+      process.env.MAIL_LOGO_URL ??
+      'https://raw.githubusercontent.com/isdlwos/real-estate-web/main/public/logo.svg';
+
+    if (apiKey && apiSecret) {
+      this.mj = new Mailjet({ apiKey, apiSecret });
+      this.logger.log(`MailService prêt — expéditeur : ${this.from.Email}`);
     } else {
-      this.transporter = nodemailer.createTransport({
-        host,
-        port: Number(process.env.SMTP_PORT ?? 587),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+      this.mj = null;
+      this.logger.warn('MAILJET_API_KEY / MAILJET_API_SECRET manquants — emails désactivés (logs seulement)');
     }
   }
 
-  private layout(body: string, frontendUrl: string): string {
-    return `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#F8F6F3;font-family:Inter,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8F6F3;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
-        <tr>
-          <td style="background:#0f2044;padding:32px 40px;">
-            <p style="margin:0;color:#c8a96e;font-size:22px;font-weight:700;letter-spacing:.5px;">Prestige Immobilier</p>
-          </td>
-        </tr>
-        <tr><td style="padding:40px;">${body}</td></tr>
-        <tr>
-          <td style="padding:24px 40px;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;color:#94a3b8;font-size:12px;">
-              Prestige Immobilier · Dakar, Sénégal<br>
-              <a href="${frontendUrl}" style="color:#94a3b8;">prestige-immobilier.sn</a>
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body></html>`;
+  // ---------------------------------------------------------------------------
+  // Envoi interne
+  // ---------------------------------------------------------------------------
+
+  private async send(to: string, subject: string, html: string): Promise<void> {
+    if (!this.mj) {
+      this.logger.log(`[DEV no-send] → ${to} | ${subject}`);
+      return;
+    }
+    try {
+      const res = await this.mj.post('send', { version: 'v3.1' }).request({
+        Messages: [
+          {
+            From: this.from,
+            To: [{ Email: to }],
+            Subject: subject,
+            HTMLPart: html,
+          },
+        ],
+      });
+      const status = (res.body as any)?.Messages?.[0]?.Status ?? 'unknown';
+      this.logger.log(`Email envoyé → ${to} | ${subject} | status: ${status}`);
+    } catch (err: any) {
+      this.logger.error(`Échec envoi email → ${to} | ${subject} | ${err?.message ?? err}`);
+    }
   }
 
+  // Couleurs du thème
+  private static readonly NAVY   = '#0f2044';
+  private static readonly GOLD   = '#c8a96e';
+  private static readonly CREAM  = '#F8F6F3';
+  private static readonly TEXT   = '#1e293b';
+  private static readonly MUTED  = '#64748b';
+
+  // ---------------------------------------------------------------------------
+  // Layout principal
+  // ---------------------------------------------------------------------------
+
+  private layout(body: string): string {
+    const { NAVY, GOLD, CREAM } = MailService;
+
+    const logo = `<img src="${this.logoUrl}" alt="Prestige Immobilier" width="220" height="46" style="display:block;margin:0 auto;border:0;" />`;
+
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Prestige Immobilier</title>
+</head>
+<body style="margin:0;padding:0;background-color:${CREAM};font-family:Georgia,'Times New Roman',serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+
+          <!-- ══ EN-TÊTE ══ -->
+          <tr>
+            <td style="background-color:${NAVY};border-radius:12px 12px 0 0;padding:36px 40px;text-align:center;">
+              ${logo}
+              <div style="height:1px;background:linear-gradient(to right,transparent,${GOLD},transparent);margin:18px 0 14px;"></div>
+              <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:rgba(200,169,110,0.5);">Biens d'exception</p>
+            </td>
+          </tr>
+
+          <!-- ══ BANDE OR ══ -->
+          <tr>
+            <td style="height:3px;background:linear-gradient(to right,${NAVY},${GOLD},${NAVY});font-size:3px;line-height:3px;">&nbsp;</td>
+          </tr>
+
+          <!-- ══ CONTENU ══ -->
+          <tr>
+            <td style="background-color:#ffffff;padding:48px 40px;">
+              ${body}
+            </td>
+          </tr>
+
+          <!-- ══ PIED DE PAGE ══ -->
+          <tr>
+            <td style="background-color:${NAVY};border-radius:0 0 12px 12px;padding:28px 40px;text-align:center;">
+              <p style="margin:0 0 8px;font-family:'Inter',Arial,sans-serif;font-size:12px;color:${GOLD};letter-spacing:2px;text-transform:uppercase;font-weight:500;">Prestige Immobilier</p>
+              <p style="margin:0 0 16px;font-family:'Inter',Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.45);">Dakar, Sénégal</p>
+              <div style="height:1px;background:rgba(200,169,110,0.3);margin-bottom:16px;"></div>
+              <p style="margin:0;font-family:'Inter',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.3);">
+                Vous recevez cet email car vous êtes inscrit sur
+                <a href="${this.frontendUrl}" style="color:${GOLD};text-decoration:none;">prestige-immobilier.sn</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Composants HTML réutilisables
+  // ---------------------------------------------------------------------------
+
   private btn(href: string, label: string): string {
-    return `<a href="${href}" style="display:inline-block;background:#0f2044;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:600;">${label}</a>`;
+    return `<table cellpadding="0" cellspacing="0" border="0" style="margin:32px 0;">
+      <tr>
+        <td style="background-color:${MailService.GOLD};border-radius:6px;">
+          <a href="${href}" style="display:inline-block;padding:14px 32px;font-family:'Inter',Arial,sans-serif;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.5px;">${label}</a>
+        </td>
+      </tr>
+    </table>`;
   }
 
   private p(text: string): string {
-    return `<p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">${text}</p>`;
+    return `<p style="margin:0 0 16px;font-family:'Inter',Arial,sans-serif;font-size:15px;line-height:1.7;color:${MailService.TEXT};">${text}</p>`;
   }
 
   private h(text: string): string {
-    return `<p style="margin:0 0 16px;color:#0f2044;font-size:18px;font-weight:600;">${text}</p>`;
+    return `<h1 style="margin:0 0 8px;font-family:'Gilda Display',Georgia,serif;font-size:28px;font-weight:400;color:${MailService.NAVY};line-height:1.3;">${text}</h1>`;
   }
+
+  private divider(): string {
+    return `<div style="height:1px;background:linear-gradient(to right,${MailService.GOLD},transparent);margin:24px 0;"></div>`;
+  }
+
+  private note(text: string): string {
+    return `<p style="margin:24px 0 0;font-family:'Inter',Arial,sans-serif;font-size:12px;color:${MailService.MUTED};line-height:1.6;border-left:3px solid ${MailService.GOLD};padding-left:12px;">${text}</p>`;
+  }
+
+  private infoBox(rows: { label: string; value: string }[]): string {
+    const { CREAM, MUTED, TEXT } = MailService;
+    const trs = rows
+      .map(
+        (r) =>
+          `<tr>
+            <td style="padding:10px 16px;font-family:'Inter',Arial,sans-serif;font-size:13px;color:${MUTED};font-weight:500;width:40%;border-bottom:1px solid #f1f5f9;">${r.label}</td>
+            <td style="padding:10px 16px;font-family:'Inter',Arial,sans-serif;font-size:13px;color:${TEXT};font-weight:600;border-bottom:1px solid #f1f5f9;">${r.value}</td>
+          </tr>`,
+      )
+      .join('');
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};border-radius:8px;border:1px solid #e2e8f0;margin:24px 0;">${trs}</table>`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Emails — Baux locatifs
+  // ---------------------------------------------------------------------------
 
   async sendLeaseCreated(opts: {
     to: string;
@@ -73,45 +187,23 @@ export class MailService {
     startDate: Date;
     propertyAddress: string | null;
   }): Promise<void> {
-    const {
-      to,
-      tenantName,
-      agentName,
-      monthlyRent,
-      startDate,
-      propertyAddress,
-    } = opts;
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
-    const dateStr = startDate.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
+    const { to, tenantName, agentName, monthlyRent, startDate, propertyAddress } = opts;
+    const dateStr = startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     const rentStr = new Intl.NumberFormat('fr-FR').format(monthlyRent);
 
     const body = `
-      ${this.h(`Bonjour ${tenantName},`)}
-      ${this.p(`Votre contrat de location a bien été enregistré${propertyAddress ? ` pour le bien situé au <strong>${propertyAddress}</strong>` : ''}. Vous trouverez ci-dessous les informations clés de votre bail :`)}
-      <table style="width:100%;border-collapse:collapse;margin:0 0 24px;">
-        <tr><td style="padding:10px 0;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:14px;width:40%;">Montant mensuel</td>
-            <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;font-weight:600;font-size:14px;color:#0f2044;">${rentStr} FCFA / mois</td></tr>
-        <tr><td style="padding:10px 0;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:14px;">Début du bail</td>
-            <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;font-weight:600;font-size:14px;color:#0f2044;">${dateStr}</td></tr>
-        <tr><td style="padding:10px 0;color:#64748b;font-size:14px;">Propriétaire / Gérant</td>
-            <td style="padding:10px 0;font-weight:600;font-size:14px;color:#0f2044;">${agentName}</td></tr>
-      </table>
-      ${this.p(`Pour toute question, n'hésitez pas à contacter votre gestionnaire.`)}`;
+      ${this.h('Votre bail est enregistré')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${tenantName}</strong>,`)}
+      ${this.p(`Votre contrat de location a bien été enregistré${propertyAddress ? ` pour le bien situé au <strong>${propertyAddress}</strong>` : ''}. Voici les informations clés :`)}
+      ${this.infoBox([
+        { label: 'Montant mensuel', value: `${rentStr} FCFA / mois` },
+        { label: 'Début du bail', value: dateStr },
+        { label: 'Gestionnaire', value: agentName },
+      ])}
+      ${this.note('Pour toute question, contactez directement votre gestionnaire depuis votre espace personnel.')}`;
 
-    const info = await this.transporter.sendMail({
-      from: `"Prestige Immobilier" <${process.env.SMTP_FROM ?? 'noreply@prestige-immobilier.sn'}>`,
-      to,
-      subject: `📋 Votre contrat de location est enregistré — Prestige Immobilier`,
-      html: this.layout(body, frontendUrl),
-    });
-
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(`[DEV] Email "bail créé" → ${to} | ${info.messageId}`);
-    }
+    await this.send(to, `📋 Votre contrat de location est enregistré — Prestige Immobilier`, this.layout(body));
   }
 
   async sendLatePaymentAlert(opts: {
@@ -120,27 +212,25 @@ export class MailService {
     lateCount: number;
   }): Promise<void> {
     const { to, firstName, lateCount } = opts;
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
 
     const body = `
-      ${this.h(`Bonjour ${firstName},`)}
-      ${this.p(`Votre portefeuille locatif comporte actuellement <strong style="color:#dc2626;">${lateCount} loyer${lateCount > 1 ? 's' : ''} en retard</strong>. Une action de votre part est recommandée pour régulariser la situation.`)}
-      <div style="margin:0 0 24px;">${this.btn(`${frontendUrl}/account/leases`, 'Voir mes baux →')}</div>
-      ${this.p(`<span style="font-size:13px;color:#94a3b8;">Vous recevez cet email car vous gérez des biens sur Prestige Immobilier.</span>`)}`;
+      ${this.h('Loyers en retard')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${firstName}</strong>,`)}
+      ${this.p(`Votre portefeuille locatif comporte actuellement <strong style="color:#dc2626;">${lateCount} loyer${lateCount > 1 ? 's' : ''} en retard</strong>. Nous vous invitons à régulariser la situation au plus tôt.`)}
+      ${this.btn(`${this.frontendUrl}/account/leases`, 'Gérer mes baux')}
+      ${this.note('Vous recevez cet email car vous gérez des biens sur Prestige Immobilier.')}`;
 
-    const info = await this.transporter.sendMail({
-      from: `"Prestige Immobilier" <${process.env.SMTP_FROM ?? 'noreply@prestige-immobilier.sn'}>`,
+    await this.send(
       to,
-      subject: `⚠️ ${lateCount} loyer${lateCount > 1 ? 's' : ''} en retard dans votre portefeuille`,
-      html: this.layout(body, frontendUrl),
-    });
-
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(
-        `[DEV] Email "loyers en retard (${lateCount})" → ${to} | ${info.messageId}`,
-      );
-    }
+      `⚠️ ${lateCount} loyer${lateCount > 1 ? 's' : ''} en retard dans votre portefeuille`,
+      this.layout(body),
+    );
   }
+
+  // ---------------------------------------------------------------------------
+  // Emails — Rendez-vous
+  // ---------------------------------------------------------------------------
 
   async sendNewAppointment(opts: {
     to: string;
@@ -149,37 +239,22 @@ export class MailService {
     date: Date;
   }): Promise<void> {
     const { to, agentFirstName, clientName, date } = opts;
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
-    const dateStr = date.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-    const timeStr = date.toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
     const body = `
-      ${this.h(`Bonjour ${agentFirstName},`)}
-      ${this.p(`<strong>${clientName}</strong> a demandé un rendez-vous avec vous :`)}
-      <div style="background:#f1f5f9;border-radius:10px;padding:20px;margin:0 0 24px;">
-        <p style="margin:0;font-size:16px;font-weight:600;color:#0f2044;">📅 ${dateStr} à ${timeStr}</p>
-      </div>
-      ${this.p(`Connectez-vous à votre espace pour confirmer ou proposer un autre créneau.`)}
-      <div style="margin:0 0 24px;">${this.btn(`${frontendUrl}/account/appointments`, 'Voir le rendez-vous →')}</div>`;
+      ${this.h('Nouveau rendez-vous')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${agentFirstName}</strong>,`)}
+      ${this.p(`<strong>${clientName}</strong> a demandé un rendez-vous avec vous pour visiter un de vos biens.`)}
+      ${this.infoBox([
+        { label: 'Client', value: clientName },
+        { label: 'Date', value: `${dateStr} à ${timeStr}` },
+      ])}
+      ${this.btn(`${this.frontendUrl}/account/appointments`, 'Gérer mes rendez-vous')}
+      ${this.note('Confirmez ou proposez un autre créneau depuis votre espace agent.')}`;
 
-    const info = await this.transporter.sendMail({
-      from: `"Prestige Immobilier" <${process.env.SMTP_FROM ?? 'noreply@prestige-immobilier.sn'}>`,
-      to,
-      subject: `📅 Nouveau rendez-vous de ${clientName}`,
-      html: this.layout(body, frontendUrl),
-    });
-
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(`[DEV] Email "nouveau RDV" → ${to} | ${info.messageId}`);
-    }
+    await this.send(to, `📅 Nouveau rendez-vous de ${clientName}`, this.layout(body));
   }
 
   async sendAppointmentConfirmed(opts: {
@@ -189,38 +264,71 @@ export class MailService {
     date: Date;
   }): Promise<void> {
     const { to, clientFirstName, agentName, date } = opts;
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
-    const dateStr = date.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-    const timeStr = date.toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
     const body = `
-      ${this.h(`Bonjour ${clientFirstName},`)}
-      ${this.p(`Votre rendez-vous a été <strong style="color:#16a34a;">confirmé</strong> par <strong>${agentName}</strong>. Notez bien la date et l'heure :`)}
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px;margin:0 0 24px;">
-        <p style="margin:0;font-size:16px;font-weight:600;color:#15803d;">✅ ${dateStr} à ${timeStr}</p>
-      </div>
-      ${this.p(`En cas d'imprévu, vous pouvez modifier votre rendez-vous depuis votre espace personnel.`)}
-      <div style="margin:0 0 24px;">${this.btn(`${frontendUrl}/account/appointments`, 'Voir mes rendez-vous →')}</div>`;
+      ${this.h('Rendez-vous confirmé')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${clientFirstName}</strong>,`)}
+      ${this.p(`Votre rendez-vous a été <strong style="color:#16a34a;">confirmé</strong> par <strong>${agentName}</strong>.`)}
+      ${this.infoBox([
+        { label: 'Agent', value: agentName },
+        { label: 'Date', value: `${dateStr} à ${timeStr}` },
+      ])}
+      ${this.btn(`${this.frontendUrl}/account/appointments`, 'Voir mes rendez-vous')}
+      ${this.note('En cas d\'imprévu, vous pouvez annuler ou reporter depuis votre espace personnel.')}`;
 
-    const info = await this.transporter.sendMail({
-      from: `"Prestige Immobilier" <${process.env.SMTP_FROM ?? 'noreply@prestige-immobilier.sn'}>`,
-      to,
-      subject: `✅ Rendez-vous confirmé — ${dateStr}`,
-      html: this.layout(body, frontendUrl),
-    });
-
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(`[DEV] Email "RDV confirmé" → ${to} | ${info.messageId}`);
-    }
+    await this.send(to, `✅ Rendez-vous confirmé — ${dateStr}`, this.layout(body));
   }
+
+  async sendAppointmentCancelled(opts: {
+    to: string;
+    recipientName: string;
+    date: Date;
+    cancelledBy: 'client' | 'agent';
+  }): Promise<void> {
+    const { to, recipientName, date, cancelledBy } = opts;
+    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    const body = `
+      ${this.h('Rendez-vous annulé')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${recipientName}</strong>,`)}
+      ${this.p(`Le rendez-vous du <strong>${dateStr} à ${timeStr}</strong> a été <strong style="color:#dc2626;">annulé</strong> par ${cancelledBy === 'client' ? 'le client' : "l'agent"}.`)}
+      ${this.btn(`${this.frontendUrl}/account/appointments`, 'Voir mes rendez-vous')}
+      ${this.note('Vous pouvez programmer un nouveau rendez-vous depuis votre espace personnel.')}`;
+
+    await this.send(to, `❌ Rendez-vous annulé — ${dateStr}`, this.layout(body));
+  }
+
+  async sendAppointmentRescheduled(opts: {
+    to: string;
+    recipientName: string;
+    newDate: Date;
+  }): Promise<void> {
+    const { to, recipientName, newDate } = opts;
+    const dateStr = newDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = newDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    const body = `
+      ${this.h('Rendez-vous reporté')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${recipientName}</strong>,`)}
+      ${this.p('Votre rendez-vous a été reporté à une nouvelle date.')}
+      ${this.infoBox([
+        { label: 'Nouvelle date', value: `${dateStr} à ${timeStr}` },
+      ])}
+      ${this.btn(`${this.frontendUrl}/account/appointments`, 'Voir mes rendez-vous')}
+      ${this.note('Si ce créneau ne vous convient pas, vous pouvez en proposer un autre depuis votre espace.')}`;
+
+    await this.send(to, `🗓️ Rendez-vous reporté — ${dateStr}`, this.layout(body));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Emails — Abonnements
+  // ---------------------------------------------------------------------------
 
   async sendSubscriptionExpiringSoon(opts: {
     to: string;
@@ -230,70 +338,80 @@ export class MailService {
     daysLeft: number;
   }): Promise<void> {
     const { to, firstName, planName, expiresAt, daysLeft } = opts;
-    const expiryStr = expiresAt.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3002';
+    const expiryStr = expiresAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    const html = `
-<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#F8F6F3;font-family:Inter,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8F6F3;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
-        <!-- Header -->
-        <tr>
-          <td style="background:#0f2044;padding:32px 40px;">
-            <p style="margin:0;color:#c8a96e;font-size:22px;font-weight:700;letter-spacing:.5px;">Prestige Immobilier</p>
-          </td>
-        </tr>
-        <!-- Body -->
-        <tr>
-          <td style="padding:40px;">
-            <p style="margin:0 0 16px;color:#0f2044;font-size:18px;font-weight:600;">Bonjour ${firstName},</p>
-            <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
-              Votre abonnement <strong style="color:#0f2044;">${planName}</strong> expire dans
-              <strong style="color:#ea580c;">${daysLeft} jour${daysLeft > 1 ? 's' : ''}</strong>, le <strong>${expiryStr}</strong>.
-            </p>
-            <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
-              Pour continuer à publier vos annonces sans interruption, renouvelez votre abonnement dès maintenant.
-            </p>
-            <a href="${frontendUrl}/pricing"
-               style="display:inline-block;background:#0f2044;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:600;">
-              Renouveler mon abonnement →
-            </a>
-          </td>
-        </tr>
-        <!-- Footer -->
-        <tr>
-          <td style="padding:24px 40px;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;color:#94a3b8;font-size:12px;">
-              Prestige Immobilier · Dakar, Sénégal<br>
-              <a href="${frontendUrl}/account/billing" style="color:#94a3b8;">Gérer mon abonnement</a>
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+    const body = `
+      ${this.h('Votre abonnement expire bientôt')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${firstName}</strong>,`)}
+      ${this.p(`Votre abonnement <strong>${planName}</strong> expire dans <strong style="color:#ea580c;">${daysLeft} jour${daysLeft > 1 ? 's' : ''}</strong>.`)}
+      ${this.infoBox([
+        { label: 'Formule', value: planName },
+        { label: 'Date d\'expiration', value: expiryStr },
+      ])}
+      ${this.btn(`${this.frontendUrl}/pricing`, 'Renouveler mon abonnement')}
+      ${this.note(`Après expiration, vos annonces actives seront masquées. <a href="${this.frontendUrl}/account/billing" style="color:${MailService.GOLD};">Gérer mon abonnement</a>`)}`;
 
-    const info = await this.transporter.sendMail({
-      from: `"Prestige Immobilier" <${process.env.SMTP_FROM ?? 'noreply@prestige-immobilier.sn'}>`,
+    await this.send(
       to,
-      subject: `⏳ Votre abonnement ${planName} expire dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`,
-      html,
-    });
+      `⏳ Votre abonnement ${planName} expire dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`,
+      this.layout(body),
+    );
+  }
 
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(
-        `[DEV] Email "expiration J-${daysLeft}" → ${to} | messageId: ${info.messageId}`,
-      );
-    }
+  async sendSubscriptionActivated(opts: {
+    to: string;
+    firstName: string;
+    planName: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    const { to, firstName, planName, expiresAt } = opts;
+    const expiryStr = expiresAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const body = `
+      ${this.h('Abonnement activé')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${firstName}</strong>,`)}
+      ${this.p(`Votre abonnement <strong>${planName}</strong> est maintenant <strong style="color:#16a34a;">actif</strong>. Vous pouvez publier vos annonces sans restriction.`)}
+      ${this.infoBox([
+        { label: 'Formule', value: planName },
+        { label: 'Valide jusqu\'au', value: expiryStr },
+      ])}
+      ${this.btn(`${this.frontendUrl}/account`, 'Accéder à mon espace')}
+      ${this.note('Merci de votre confiance. Notre équipe reste disponible pour vous accompagner.')}`;
+
+    await this.send(to, `🎉 Abonnement ${planName} activé — Prestige Immobilier`, this.layout(body));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Emails — Bienvenue / Auth
+  // ---------------------------------------------------------------------------
+
+  async sendWelcome(opts: { to: string; firstName: string }): Promise<void> {
+    const { to, firstName } = opts;
+
+    const body = `
+      ${this.h(`Bienvenue, ${firstName}`)}
+      ${this.divider()}
+      ${this.p('Votre compte a été créé avec succès sur <strong>Prestige Immobilier</strong>. Nous sommes ravis de vous accueillir.')}
+      ${this.p("Vous pouvez dès maintenant explorer notre catalogue de biens d'exception et prendre rendez-vous avec nos agents.")}
+      ${this.btn(`${this.frontendUrl}/properties`, 'Découvrir nos propriétés')}
+      ${this.note("Si vous n'êtes pas à l'origine de cette inscription, vous pouvez ignorer cet email.")}`;
+
+    await this.send(to, `Bienvenue sur Prestige Immobilier`, this.layout(body));
+  }
+
+  async sendPasswordReset(opts: { to: string; firstName: string; resetUrl: string }): Promise<void> {
+    const { to, firstName, resetUrl } = opts;
+
+    const body = `
+      ${this.h('Réinitialisation de mot de passe')}
+      ${this.divider()}
+      ${this.p(`Bonjour <strong>${firstName}</strong>,`)}
+      ${this.p('Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour en définir un nouveau.')}
+      ${this.btn(resetUrl, 'Réinitialiser mon mot de passe')}
+      ${this.note("Ce lien est valable <strong>1 heure</strong>. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email — votre mot de passe ne sera pas modifié.")}`;
+
+    await this.send(to, `Réinitialisation de votre mot de passe`, this.layout(body));
   }
 }

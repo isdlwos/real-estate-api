@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { User } from '../users/entities/user.entity';
@@ -14,12 +15,14 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private mailService: MailService,
   ) {}
 
   async register(dto: RegisterDto) {
     const user = await this.usersService.create({ ...dto, role: Role.CLIENT });
     const tokens = await this.generateTokens(user);
     await this.usersService.updateRefreshToken(user.id, tokens.refreshToken);
+    void this.mailService.sendWelcome({ to: user.email, firstName: user.firstName });
     return { ...tokens, user: this.sanitize(user) };
   }
 
@@ -45,11 +48,17 @@ export class AuthService {
     await this.usersService.updateRefreshToken(userId, null);
   }
 
-  async forgotPassword(email: string): Promise<{ resetToken: string }> {
+  async forgotPassword(email: string): Promise<void> {
     const result = await this.usersService.setPasswordResetToken(email);
-    // In production: send result.token by email instead of returning it
-    // Always return 200 to avoid user enumeration — token is null-safe
-    return { resetToken: result?.token ?? '' };
+    if (result) {
+      const resetUrl = `${this.configService.get('NEXT_PUBLIC_SITE_URL') ?? 'http://localhost:3002'}/reset-password?token=${result.token}`;
+      void this.mailService.sendPasswordReset({
+        to: result.user.email,
+        firstName: result.user.firstName,
+        resetUrl,
+      });
+    }
+    // Always return 200 to avoid user enumeration
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
